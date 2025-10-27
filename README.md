@@ -1,1 +1,1 @@
-## Weight Log API
+# Weight Log API
