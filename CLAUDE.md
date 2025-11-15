@@ -119,6 +119,31 @@ Key tables:
 
 ## Development Guidelines
 
+### Test-Driven Development (TDD)
+
+**This project follows Test-Driven Development practices:**
+
+1. **Write tests FIRST** before implementing features
+2. Write the minimal code needed to make tests pass
+3. Refactor while keeping tests green
+4. Aim for high test coverage (80%+ on business logic)
+
+**TDD Workflow:**
+```bash
+# 1. Write a failing test
+php artisan make:test --pest Feature/MyFeatureTest
+
+# 2. Run the test (it should fail)
+php artisan test --filter=MyFeatureTest
+
+# 3. Implement the feature to make it pass
+# 4. Run tests again to verify
+php artisan test --filter=MyFeatureTest
+
+# 5. Check coverage
+php artisan test --coverage
+```
+
 ### Follow Laravel Boost Guidelines
 
 This project follows Laravel Boost guidelines (see `.github/copilot-instructions.md`). Key principles:
@@ -140,6 +165,7 @@ This project follows Laravel Boost guidelines (see `.github/copilot-instructions
 - Pest v4 supports browser testing in `tests/Browser/`
 - Use factories for test data setup
 - Run minimal tests with filters during development
+- Check coverage regularly: `php artisan test --coverage`
 
 ### API Development Patterns
 
