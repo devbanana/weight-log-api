@@ -24,7 +24,7 @@ This is a **Symfony 7.3 API application** for weight logging, implementing **str
 - **Database**: Doctrine ORM (PostgreSQL/MySQL/SQLite)
 - **Messaging**: Symfony Messenger (CQRS command/query bus)
 - **Testing**: PHPUnit 12
-- **Static Analysis**: PHPStan Level 9
+- **Static Analysis**: PHPStan Level 10 (maximum strictness)
 - **Code Style**: Easy Coding Standard (ECS)
 - **Architecture Validation**: Deptrac
 
@@ -269,11 +269,11 @@ Application/User/DTO/UserResponse.php
 # Format code
 vendor/bin/ecs check src --fix
 
-# Static analysis (MUST pass level 9)
-vendor/bin/phpstan analyse
+# Static analysis (MUST pass level 10)
+composer analyze
 
 # Run tests
-vendor/bin/phpunit
+composer test
 
 # Validate architecture boundaries
 vendor/bin/deptrac analyse
