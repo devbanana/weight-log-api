@@ -54,6 +54,11 @@ php artisan test --filter=testName
 ```bash
 # Format code (run before finalizing changes)
 vendor/bin/pint --dirty
+
+# Run static analysis with PHPStan
+composer analyze
+# OR
+vendor/bin/phpstan analyse --memory-limit=1G
 ```
 
 ### Setup
@@ -155,7 +160,26 @@ This project follows Laravel Boost guidelines (see `.github/copilot-instructions
 - Use PHP 8 constructor property promotion
 - Always use explicit return types and type hints
 - Run `vendor/bin/pint --dirty` before finalizing changes
+- Run `composer analyze` (PHPStan) to catch type errors
 - Write Pest tests for all features
+
+### Static Analysis with PHPStan
+
+This project uses PHPStan (via Larastan) for static type analysis:
+
+- **Level**: 10 (maximum strictness - **MUST PASS**)
+- **Run analysis**: `composer analyze`
+- **Configuration**: `phpstan.neon`
+- **Pest integration**: Configured to understand Pest's test syntax
+- **Model properties**: Use `@property` PHPDoc annotations for casted attributes
+
+**Writing PHPStan-friendly code**:
+- Always use explicit return types
+- Add `@property` annotations to models for casted attributes
+- Use `assert(is_string($var))` or similar to narrow mixed types
+- Use `assert($var instanceof Type)` to help PHPStan understand type narrowing
+- Use null-safe operators (`?->`) when appropriate
+- **All code must pass level 10 analysis before committing**
 
 ### Testing with Pest v4
 
