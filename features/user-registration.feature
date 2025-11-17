@@ -5,7 +5,6 @@ Feature: User Registration
 
   # This scenario runs on BOTH usecase and e2e suites
   # It verifies the same behavior at both layers
-  @critical
   Scenario: Successfully register a new user
     When I register with email "john@example.com" and password "SecurePass123!"
     Then the user should be registered

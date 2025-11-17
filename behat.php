@@ -18,9 +18,9 @@ return (new Config())
             ],
         ]))
         ->withSuite((new Suite('usecase'))
-            ->withContexts('UseCase\UserContext')
+            ->withContexts(App\Tests\UseCase\UserContext::class)
             ->withPaths('%paths.base%/features')
             ->withFilter(new TagFilter('~@e2e')))
         ->withSuite((new Suite('e2e'))
-            ->withContexts('E2E\UserContext')
+            ->withContexts(App\Tests\E2E\UserContext::class)
             ->withPaths('%paths.base%/features')));

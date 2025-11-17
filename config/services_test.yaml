@@ -5,10 +5,10 @@ services:
         public: true
 
     # Behat contexts need to be public services
-    UseCase\UserContext:
+    App\Tests\UseCase\UserContext:
         autowire: true
 
-    E2E\UserContext:
+    App\Tests\E2E\UserContext:
         autowire: true
         arguments:
             $kernel: '@kernel'

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace UseCase;
+namespace App\Tests\UseCase;
 
 use Behat\Behat\Context\Context;
 use Behat\Step\Given;

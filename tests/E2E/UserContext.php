@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace E2E;
+namespace App\Tests\E2E;
 
 use Behat\Behat\Context\Context;
 use Behat\Step\Given;
