@@ -1,0 +1,19 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: true
+
+    # Behat contexts need to be public services
+    DomainContext:
+        class: DomainContext
+
+    ApplicationContext:
+        class: ApplicationContext
+        arguments:
+            $kernel: '@kernel'
+
+    ApiContext:
+        class: ApiContext
+        arguments:
+            $kernel: '@kernel'

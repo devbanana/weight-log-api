@@ -87,6 +87,8 @@
         }
     },
     "require-dev": {
+        "behat/behat": "*",
+        "friends-of-behat/symfony-extension": "*",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-symfony": "^2.0",
