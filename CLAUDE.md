@@ -256,12 +256,297 @@ Application/User/DTO/UserResponse.php
 6. **Create Handlers** - Orchestrate domain logic
 7. **Implement Adapters** - Connect to framework
 
-### Writing Tests
+### Testing Strategy (Matthias Noback's Approach)
 
-- **Domain tests** - Unit tests, no framework, fast
-- **Application tests** - Unit tests with mocked repositories
-- **Infrastructure tests** - Integration tests with real database
-- **API tests** - Functional tests hitting HTTP endpoints
+Following Chapter 14 of "Advanced Web Application Architecture", we use **four types of tests**:
+
+#### 1. Unit Tests (PHPUnit)
+**What**: Test domain objects (entities, value objects) in isolation
+**Where**: `tests/Unit/Domain/`
+**Tools**: PHPUnit
+**Speed**: Lightning fast (milliseconds)
+**Coverage**: Domain invariants, business rules, edge cases
+
+```php
+// tests/Unit/Domain/User/EmailTest.php
+final class EmailTest extends TestCase {
+    public function test_it_validates_email_format(): void {
+        $this->expectException(\InvalidArgumentException::class);
+        Email::fromString('not-an-email');
+    }
+}
+```
+
+#### 2. Use Case Tests (Behat)
+**What**: Test application core (commands/queries) with business language
+**Where**: `features/*.feature`
+**Tools**: Behat with TestServiceContainer and spy objects
+**Speed**: Fast (no infrastructure)
+**Coverage**: Complete use cases, domain logic orchestration
+
+```gherkin
+# features/user-registration.feature
+Scenario: Customer receives confirmation email
+  When a customer registers with email "test@example.com"
+  Then they should receive a confirmation email
+```
+
+**Key**: Use `TestServiceContainer` with **spy objects** (not mocks) to verify side effects:
+
+```php
+// features/bootstrap/UseCaseContext.php
+final class UseCaseContext implements Context {
+    private TestServiceContainer $container;
+
+    public function __construct() {
+        $this->container = new TestServiceContainer();
+    }
+
+    /** @When a customer registers with email :email */
+    public function aCustomerRegistersWithEmail(string $email): void {
+        $this->container->application()->registerUser(
+            new RegisterUser($email, 'password123')
+        );
+    }
+
+    /** @Then they should receive a confirmation email */
+    public function theyShouldReceiveAConfirmationEmail(): void {
+        Assert::assertNotEmpty(
+            $this->container->mailer()->emailsSentFor()
+        );
+    }
+}
+```
+
+#### 3. Adapter Tests (PHPUnit)
+**What**: Test infrastructure adapters (repositories, controllers, API clients)
+**Where**: `tests/Integration/Infrastructure/`
+**Tools**: PHPUnit with real infrastructure
+**Speed**: Slower (uses database, HTTP, etc.)
+**Coverage**: Port adapters work correctly
+
+**Two types**:
+
+**A. Contract Tests** (for outgoing port adapters like repositories):
+```php
+// tests/Integration/Infrastructure/Persistence/OrderRepositoryContractTest.php
+final class OrderRepositoryContractTest extends TestCase {
+    /** @dataProvider repositories */
+    public function test_it_can_save_and_retrieve_orders(
+        OrderRepository $repository
+    ): void {
+        $order = Order::create(/* ... */);
+        $repository->save($order);
+
+        $retrieved = $repository->ofId($order->id());
+
+        $this->assertEquals($order, $retrieved);
+    }
+
+    public function repositories(): Generator {
+        yield [new InMemoryOrderRepository()];
+        yield [new DoctrineOrderRepository(/* real DB */)];
+    }
+}
+```
+
+**B. Driving Tests** (for incoming port adapters like controllers):
+```php
+// tests/Integration/Infrastructure/Api/RegisterUserControllerTest.php
+final class RegisterUserControllerTest extends WebTestCase {
+    public function test_it_correctly_invokes_register_user(): void {
+        $application = $this->createMock(ApplicationInterface::class);
+        $application->expects($this->once())
+            ->method('registerUser')
+            ->with(new RegisterUser('test@example.com', 'pass'));
+
+        $client = self::createClient();
+        $client->getContainer()->set(ApplicationInterface::class, $application);
+
+        $client->request('POST', '/auth/register', [
+            'email' => 'test@example.com',
+            'password' => 'pass'
+        ]);
+
+        $this->assertResponseIsSuccessful();
+    }
+}
+```
+
+#### 4. End-to-End Tests (Behat + Real Infrastructure)
+**What**: Test complete system as black box with real HTTP, database, etc.
+**Where**: Same `features/*.feature` files, different suite
+**Tools**: Behat with real Symfony kernel, web server
+**Speed**: Slowest (full stack)
+**Coverage**: Everything works together in production-like environment
+
+**Key**: Reuse the same scenarios from use case tests but with different context:
+
+```php
+// features/bootstrap/E2EContext.php (makes real HTTP requests)
+final class E2EContext implements Context {
+    private KernelInterface $kernel;
+    private ?Response $response = null;
+
+    /** @When a customer registers with email :email */
+    public function aCustomerRegistersWithEmail(string $email): void {
+        $this->response = $this->kernel->handle(
+            Request::create('/auth/register', 'POST', [
+                'email' => $email,
+                'password' => 'password123'
+            ])
+        );
+    }
+}
+```
+
+### Test Execution
+
+```bash
+# Unit tests (fast - run constantly)
+vendor/bin/phpunit --testsuite=unit
+
+# Use case tests (fast - run frequently)
+vendor/bin/behat --suite=usecase
+
+# Adapter tests (slower - run before commit)
+vendor/bin/phpunit --testsuite=integration
+
+# End-to-end tests (slow - run before deploy)
+vendor/bin/behat --suite=e2e
+
+# All tests
+composer test
+```
+
+## Development Workflow (TDD with Behat)
+
+Following Noback's top-down approach from Section 14.7:
+
+### Step 1: Write the Scenario (Gherkin)
+```gherkin
+# features/user-registration.feature
+Feature: User Registration
+  Scenario: Successfully register a new user
+    Given no user exists with email "john@example.com"
+    When I register with email "john@example.com" and password "SecurePass123!"
+    Then the user should be registered
+```
+
+### Step 2: Create Step Definitions (RED)
+```php
+// features/bootstrap/UseCaseContext.php
+final class UseCaseContext implements Context {
+    private TestServiceContainer $container;
+
+    public function __construct() {
+        $this->container = new TestServiceContainer();
+    }
+
+    /** @When I register with email :email and password :password */
+    public function iRegisterWith(string $email, string $password): void {
+        // This will be RED - code doesn't exist yet
+        $this->container->application()->registerUser(
+            new RegisterUser($email, $password)
+        );
+    }
+}
+```
+
+### Step 3: Implement Domain Model (TDD)
+As you implement, **write PHPUnit unit tests** for domain objects:
+
+```php
+// tests/Unit/Domain/User/EmailTest.php - Write these AS YOU BUILD
+final class EmailTest extends TestCase {
+    public function test_it_validates_format(): void {
+        $this->expectException(\InvalidArgumentException::class);
+        Email::fromString('invalid');
+    }
+
+    public function test_it_normalizes_email(): void {
+        $email = Email::fromString('  TEST@Example.COM  ');
+        $this->assertEquals('test@example.com', $email->toString());
+    }
+}
+```
+
+### Step 4: Continue Until GREEN
+- Implement command handler
+- Create repository interface + in-memory implementation
+- Add spy objects to TestServiceContainer
+- Keep running `vendor/bin/behat --suite=usecase`
+- Keep running `vendor/bin/phpunit --testsuite=unit`
+- **Both must be GREEN before moving on**
+
+### Step 5: Write Adapter Tests
+Now test the infrastructure layer:
+
+```php
+// tests/Integration/Infrastructure/Persistence/UserRepositoryContractTest.php
+final class UserRepositoryContractTest extends TestCase {
+    /** @dataProvider repositories */
+    public function test_it_persists_users(UserRepository $repository): void {
+        $user = User::register(/* ... */);
+        $repository->save($user);
+
+        $retrieved = $repository->ofId($user->id());
+
+        $this->assertEquals($user, $retrieved);
+    }
+
+    public function repositories(): Generator {
+        yield [new InMemoryUserRepository()];
+        yield [new DoctrineUserRepository(/* real DB */)];
+    }
+}
+```
+
+### Step 6: Write End-to-End Tests
+Reuse the SAME scenarios with a different context:
+
+```php
+// features/bootstrap/E2EContext.php
+final class E2EContext implements Context {
+    private KernelInterface $kernel;
+
+    /** @When I register with email :email and password :password */
+    public function iRegisterWith(string $email, string $password): void {
+        // Real HTTP request to real API
+        $this->response = $this->kernel->handle(
+            Request::create('/auth/register', 'POST', [
+                'email' => $email,
+                'password' => $password
+            ])
+        );
+    }
+}
+```
+
+### Summary: Test Pyramid
+
+```
+         /\
+        /  \  E2E Tests (Behat e2e suite)
+       /    \ Few, slow, production-like
+      /------\
+     / Adapter \ Adapter Tests (PHPUnit integration)
+    /  Tests   \ Real database, controllers
+   /------------\
+  /  Use Case    \ Use Case Tests (Behat usecase suite)
+ /     Tests      \ TestServiceContainer + spies
+/------------------\
+/   Unit Tests      \ Unit Tests (PHPUnit)
+--------------------  Many, fast, domain objects
+```
+
+**Key Principles**:
+1. ✅ Start with scenarios (collaboration, shared understanding)
+2. ✅ Test-drive implementation (RED → GREEN → Refactor)
+3. ✅ Unit tests for domain objects (zoom in on invariants)
+4. ✅ Use case tests document features (living documentation)
+5. ✅ Adapter tests verify infrastructure (contract + driving tests)
+6. ✅ Few E2E tests for confidence (same scenarios, different context)
 
 ### Code Style
 

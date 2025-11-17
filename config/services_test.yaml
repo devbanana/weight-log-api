@@ -5,15 +5,10 @@ services:
         public: true
 
     # Behat contexts need to be public services
-    DomainContext:
-        class: DomainContext
+    UseCase\UserContext:
+        autowire: true
 
-    ApplicationContext:
-        class: ApplicationContext
-        arguments:
-            $kernel: '@kernel'
-
-    ApiContext:
-        class: ApiContext
+    E2E\UserContext:
+        autowire: true
         arguments:
             $kernel: '@kernel'
