@@ -256,6 +256,25 @@ Application/User/DTO/UserResponse.php
 6. **Create Handlers** - Orchestrate domain logic
 7. **Implement Adapters** - Connect to framework
 
+### Incremental Development Approach
+
+**IMPORTANT**: Unless explicitly asked to create everything at once, follow this incremental approach:
+
+- ✅ **Only create code needed to fix the current error/test failure**
+- ✅ **Take one step at a time** - Let tests drive what to create next
+- ✅ **Avoid creating unused code** - Even if it seems likely to be needed soon
+- ✅ **Don't generate methods/classes preemptively** - Wait until they're actually called
+- ✅ **Keep implementations minimal** - Start with empty/spy implementations
+
+**Example workflow**:
+1. Run test → See error about missing class
+2. Create minimal class → Run test again
+3. See error about missing method → Add minimal method
+4. See assertion failure → Implement actual logic
+5. Repeat until GREEN
+
+This approach prevents over-engineering and ensures every line of code is justified by a test.
+
 ### Testing Strategy (Matthias Noback's Approach)
 
 Following Chapter 14 of "Advanced Web Application Architecture", we use **four types of tests**:
