@@ -20,3 +20,4 @@
 
 # Planning/scratch files
 .claude/plans/
+.claude/settings.local.json
