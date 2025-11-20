@@ -25,7 +25,7 @@ This is a **Symfony 7.3 API application** for weight logging, implementing **str
 - **Messaging**: Symfony Messenger (CQRS command/query bus)
 - **Testing**: PHPUnit 12
 - **Static Analysis**: PHPStan Level 10 (maximum strictness)
-- **Code Style**: Easy Coding Standard (ECS)
+- **Code Style**: PHP-CS-Fixer
 - **Architecture Validation**: Deptrac
 
 ## Architecture Principles
@@ -571,7 +571,10 @@ final class E2EContext implements Context {
 
 ```bash
 # Format code
-vendor/bin/ecs check src --fix
+vendor/bin/php-cs-fixer fix
+
+# Check without fixing
+vendor/bin/php-cs-fixer fix --dry-run --diff
 
 # Static analysis (MUST pass level 10)
 composer analyze
