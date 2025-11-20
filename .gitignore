@@ -21,3 +21,8 @@
 # Planning/scratch files
 .claude/plans/
 .claude/settings.local.json
+
+###> friendsofphp/php-cs-fixer ###
+/.php-cs-fixer.php
+/.php-cs-fixer.cache
+###< friendsofphp/php-cs-fixer ###

@@ -89,13 +89,13 @@
     "require-dev": {
         "behat/behat": "*",
         "friends-of-behat/symfony-extension": "*",
+        "friendsofphp/php-cs-fixer": "^3.89",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-symfony": "^2.0",
         "phpunit/phpunit": "^12.4",
         "qossmic/deptrac-shim": "^1.0",
         "symfony/phpunit-bridge": "^7.3",
-        "symplify/easy-coding-standard": "^13.0",
         "webmozart/assert": "^1.12"
     }
 }
