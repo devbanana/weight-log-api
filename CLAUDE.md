@@ -82,6 +82,7 @@ class User {
 - **No identity** - Compared by value equality, not ID
 - **Self-validating** - Validation happens at construction
 - **Descriptive** - Describe aspects of entities
+- **Use `asString()` method** - Follow DDD convention by using `asString()` instead of `toString()` for converting value objects to strings (implement `\Stringable` interface with `__toString()` that delegates to `asString()`)
 
 Examples: `Email`, `UserId`, `PlainPassword`, `HashedPassword`
 
@@ -290,6 +291,8 @@ This approach prevents over-engineering and ensures every line of code is justif
 ### Testing Strategy (Matthias Noback's Approach)
 
 Following Chapter 14 of "Advanced Web Application Architecture", we use **four types of tests**:
+
+**Test Naming Convention**: All test methods must use **camelCase** naming (e.g., `testItCreatesEmailFromValidString()`) for better accessibility with screen readers. Do not use snake_case (e.g., `test_it_creates_email_from_valid_string()`).
 
 #### 1. Unit Tests (PHPUnit)
 **What**: Test domain objects (entities, value objects) in isolation
