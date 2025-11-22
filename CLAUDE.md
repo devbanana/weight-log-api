@@ -24,7 +24,19 @@ This is a **Symfony 7.3 API application** for weight logging, implementing **str
 - **Database**: Doctrine ORM (PostgreSQL/MySQL/SQLite)
 - **Messaging**: Symfony Messenger (CQRS command/query bus)
 - **Testing**: PHPUnit 12
-- **Static Analysis**: PHPStan Level 10 (maximum strictness)
+- **Static Analysis**: PHPStan Level Max with strict rules enabled
+  - `phpstan/phpstan-strict-rules` - Extra strict and opinionated rules
+  - `phpstan/phpstan-webmozart-assert` - Better type inference for assertions
+  - Strict options enabled:
+    - `checkTooWideReturnTypesInProtectedAndPublicMethods`
+    - `checkUninitializedProperties`
+    - `checkBenevolentUnionTypes`
+    - `reportPossiblyNonexistentGeneralArrayOffset`
+    - `reportPossiblyNonexistentConstantArrayOffset`
+    - `reportAlwaysTrueInLastCondition`
+    - `reportAnyTypeWideningInVarTag`
+    - `checkMissingOverrideMethodAttribute`
+    - `checkMissingCallableSignature`
 - **Code Style**: PHP-CS-Fixer
 - **Architecture Validation**: Deptrac
 
@@ -576,7 +588,7 @@ vendor/bin/php-cs-fixer fix
 # Check without fixing
 vendor/bin/php-cs-fixer fix --dry-run --diff
 
-# Static analysis (MUST pass level 10)
+# Static analysis (MUST pass level max with strict rules)
 composer analyze
 
 # Run tests
