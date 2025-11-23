@@ -81,6 +81,8 @@
             "@auto-scripts"
         ],
         "analyze": "vendor/bin/phpstan analyse --memory-limit=1G",
+        "deptrac": "vendor/bin/deptrac analyse",
+        "fix:cs": "vendor/bin/php-cs-fixer fix --diff",
         "test": "vendor/bin/phpunit"
     },
     "conflict": {
