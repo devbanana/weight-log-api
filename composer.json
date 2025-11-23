@@ -3,6 +3,12 @@
     "license": "proprietary",
     "minimum-stability": "stable",
     "prefer-stable": true,
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/devbanana/dead-code-detector"
+        }
+    ],
     "require": {
         "php": ">=8.4",
         "ext-ctype": "*",
@@ -88,6 +94,7 @@
     },
     "require-dev": {
         "behat/behat": "*",
+        "deptrac/deptrac": "^4.2",
         "friends-of-behat/symfony-extension": "*",
         "friendsofphp/php-cs-fixer": "^3.89",
         "phpstan/extension-installer": "^1.4",
@@ -96,7 +103,7 @@
         "phpstan/phpstan-symfony": "^2.0",
         "phpstan/phpstan-webmozart-assert": "^2.0",
         "phpunit/phpunit": "^12.4",
-        "qossmic/deptrac-shim": "^1.0",
+        "shipmonk/dead-code-detector": "dev-feature/add-behat-support",
         "symfony/phpunit-bridge": "^7.3",
         "webmozart/assert": "^1.12"
     }
