@@ -288,6 +288,27 @@ Application/User/DTO/UserResponse.php
 
 This approach prevents over-engineering and ensures every line of code is justified by a test.
 
+### Behavior-Driven State (Core Principle)
+
+> **"Every piece of state should be justified by behavior, and that behavior should be justified by tests."**
+
+This principle is the conjunction of BDD and TDD. It means:
+
+1. **State must be observable** - If a piece of data is stored but never read, compared, displayed, or used in a decision, it doesn't exist meaningfully. Every stored value must eventually manifest as observable behavior somewhere in the system.
+
+2. **Behavior must be tested** - If behavior exists, there must be a test that verifies it. The test is what justifies the behavior's existence.
+
+3. **Tests pull implementation** - Don't add fields, parameters, or properties speculatively. Wait until a failing test *requires* them.
+
+**Example**: A `User` entity shouldn't store `email`, `dateOfBirth`, or `password` until:
+- `email` → A test requires checking email uniqueness or displaying it
+- `dateOfBirth` → A test requires age verification (e.g., "must be 18+")
+- `password` → A test requires login/authentication
+
+**PHPStan as a guide**: Unused parameters, properties, or methods flagged by PHPStan indicate code that isn't yet justified by behavior. Treat these warnings as signals, not problems to suppress.
+
+**The implication**: Every constructor parameter should eventually flow to some observable output (API response, event, decision, etc.). If it doesn't, it shouldn't exist yet.
+
 ### Testing Strategy (Matthias Noback's Approach)
 
 Following Chapter 14 of "Advanced Web Application Architecture", we use **four types of tests**:
