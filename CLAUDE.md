@@ -191,6 +191,10 @@ src/
 - Business logic in entity methods, not services
 - Repository interfaces defined here, implemented in Infrastructure
 
+**Repository Method Naming Convention**:
+- `getByX(...)`: Must return entity or throw exception (e.g., `getById`, `getBySlug`)
+- `findByX(...)`: Returns entity or null - use for searches (e.g., `findByEmail`, `findByUsername`)
+
 ### Application Layer
 
 ✅ **Can depend on**: Domain ONLY
@@ -404,7 +408,7 @@ final class OrderRepositoryContractTest extends TestCase {
         $order = Order::create(/* ... */);
         $repository->save($order);
 
-        $retrieved = $repository->ofId($order->id());
+        $retrieved = $repository->getById($order->id());
 
         $this->assertEquals($order, $retrieved);
     }
@@ -558,7 +562,7 @@ final class UserRepositoryContractTest extends TestCase {
         $user = User::register(/* ... */);
         $repository->save($user);
 
-        $retrieved = $repository->ofId($user->id());
+        $retrieved = $repository->getById($user->id());
 
         $this->assertEquals($user, $retrieved);
     }
@@ -713,11 +717,8 @@ final readonly class PlaceOrderHandler {
     ) {}
 
     public function __invoke(PlaceOrder $command): void {
-        // Load domain objects
-        $user = $this->userRepository->ofId(UserId::fromString($command->userId));
-        if (!$user) {
-            throw new UserNotFoundException();
-        }
+        // Load domain objects (getById throws if not found)
+        $user = $this->userRepository->getById(UserId::fromString($command->userId));
 
         // Create value objects
         $orderId = $this->orderRepository->nextIdentity();
