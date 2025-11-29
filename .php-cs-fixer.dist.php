@@ -24,7 +24,10 @@ return new Config()
         'date_time_immutable' => true,
         'final_class' => true,
         'final_public_method_for_abstract_class' => true,
-        'native_function_invocation' => false,
+        'native_function_invocation' => [
+            'include' => [],
+            'strict' => true,
+        ],
         'ordered_class_elements' => [
             'order' => [
                 'use_trait',
@@ -44,6 +47,9 @@ return new Config()
             ],
         ],
         'phpdoc_line_span' => true,
+        'phpdoc_types_order' => [
+            'null_adjustment' => 'always_last',
+        ],
         'regular_callable_call' => true,
         'simplified_if_return' => true,
         'single_line_empty_body' => false,
