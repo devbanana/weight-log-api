@@ -21,7 +21,7 @@ This is a **Symfony 7.3 API application** for weight logging, implementing **str
 - **Symfony Framework**: v7.3
 - **API Platform**: v4.2 (REST + OpenAPI documentation)
 - **Authentication**: LexikJWTAuthenticationBundle (JWT tokens)
-- **Database**: Doctrine ORM (PostgreSQL/MySQL/SQLite)
+- **Database**: MongoDB with `mongodb/mongodb` (not Doctrine ODM)
 - **Messaging**: Symfony Messenger (CQRS command/query bus)
 - **Testing**: PHPUnit 12
 - **Static Analysis**: PHPStan Level Max with strict rules enabled
@@ -168,13 +168,8 @@ src/
     │       ├── RegisterUserProcessor.php    # Dispatches commands
     │       └── UserProvider.php             # Dispatches queries
     ├── Persistence/                 # Database adapter
-    │   └── Doctrine/
-    │       ├── Repository/
-    │       │   └── DoctrineUserRepository.php  # Implements UserRepositoryInterface
-    │       ├── Mapping/
-    │       │   └── User.orm.xml     # Doctrine XML mapping
-    │       └── Type/
-    │           └── UserIdType.php   # Custom Doctrine type
+    │   └── MongoDB/
+    │       └── MongoUserRepository.php  # Implements UserRepositoryInterface
     └── Security/                    # Auth adapter
         ├── SymfonyPasswordHasher.php        # Implements PasswordHasherInterface
         ├── SecurityUser.php                 # Symfony UserInterface adapter
@@ -236,7 +231,7 @@ Domain/User/User::register()
     ↓  (persists via port)
 Domain/User/UserRepositoryInterface
     ↓  (implemented by adapter)
-Infrastructure/Persistence/Doctrine/Repository/DoctrineUserRepository.php
+Infrastructure/Persistence/MongoDB/MongoUserRepository.php
 ```
 
 ### Read Operation (Query)
@@ -252,7 +247,7 @@ Application/User/Query/FindUserByIdHandler.php
     ↓  (queries via port)
 Domain/User/UserRepositoryInterface
     ↓  (implemented by adapter)
-Infrastructure/Persistence/Doctrine/Repository/DoctrineUserRepository.php
+Infrastructure/Persistence/MongoDB/MongoUserRepository.php
     ↓  (returns DTO)
 Application/User/DTO/UserResponse.php
 ```
@@ -308,6 +303,22 @@ This principle is the conjunction of BDD and TDD. It means:
 **PHPStan as a guide**: Unused parameters, properties, or methods flagged by PHPStan indicate code that isn't yet justified by behavior. Treat these warnings as signals, not problems to suppress.
 
 **The implication**: Every constructor parameter should eventually flow to some observable output (API response, event, decision, etc.). If it doesn't, it shouldn't exist yet.
+
+### MongoDB Over Doctrine ORM
+
+We use MongoDB with the raw `mongodb/mongodb` library instead of Doctrine ORM for these reasons:
+
+1. **Pure domain layer** - No `ArrayCollection` or other Doctrine types leaking into domain entities
+2. **Natural aggregate storage** - Documents map directly to DDD aggregates
+3. **Explicit persistence** - Repository handles serialization/deserialization explicitly (no magic)
+4. **ACID transactions** - MongoDB 4.0+ supports multi-document transactions when needed
+
+**Persistence approach**: Repositories handle the mapping between domain objects and BSON documents. Options include reflection (keeps aggregates completely clean) or explicit `snapshot()`/`reconstitute()` methods. Decision deferred until implementation.
+
+### Date/Time Conventions
+
+- **Always store in UTC** - All `DateTimeImmutable` values in the domain and database use UTC
+- **Convert on display only** - Timezone conversion to user's local time happens in the presentation layer
 
 ### Testing Strategy (Matthias Noback's Approach)
 
@@ -459,7 +470,7 @@ final class E2EContext implements Context {
 
 ```bash
 # Unit tests (fast - run constantly)
-vendor/bin/phpunit --testsuite=unit
+vendor/bin/phpunit tests/Unit
 
 # Use case tests (fast - run frequently)
 vendor/bin/behat --suite=usecase
@@ -468,11 +479,13 @@ vendor/bin/behat --suite=usecase
 vendor/bin/phpunit --testsuite=integration
 
 # End-to-end tests (slow - run before deploy)
-vendor/bin/behat --suite=e2e
+vendor/bin/behat --profile=e2e --suite=e2e
 
 # All tests
 composer test
 ```
+
+**Note on handler testing**: Command/Query handlers are thin orchestration code. They are tested via Behat use case tests, not PHPUnit. They are excluded from PHPUnit coverage reports.
 
 ## Development Workflow (TDD with Behat)
 
@@ -773,18 +786,34 @@ JWT_PASSPHRASE=your-passphrase
 JWT_TOKEN_TTL=3600  # 1 hour
 ```
 
-### Doctrine Mapping
+### MongoDB Persistence
 
-We use **XML mapping** (not annotations/attributes) to keep domain entities pure:
+Repositories in `Infrastructure/Persistence/MongoDB/` handle converting domain aggregates to/from BSON documents:
 
-```xml
-<!-- Infrastructure/Persistence/Doctrine/Mapping/User.orm.xml -->
-<entity name="App\Domain\User\User" table="users">
-    <id name="id" type="user_id" column="id"/>
-    <embedded name="email" class="App\Domain\User\ValueObject\Email" use-column-prefix="false">
-        <field name="value" type="string" column="email"/>
-    </embedded>
-</entity>
+```php
+// Infrastructure/Persistence/MongoDB/MongoUserRepository.php
+final class MongoUserRepository implements UserRepositoryInterface
+{
+    public function __construct(private Collection $collection) {}
+
+    public function save(User $user): void
+    {
+        $this->collection->replaceOne(
+            ['_id' => $user->id->asString()],
+            $this->toDocument($user),
+            ['upsert' => true]
+        );
+    }
+
+    public function ofId(UserId $id): ?User
+    {
+        $doc = $this->collection->findOne(['_id' => $id->asString()]);
+        return $doc ? $this->toEntity($doc) : null;
+    }
+
+    private function toDocument(User $user): array { /* ... */ }
+    private function toEntity(array $doc): User { /* ... */ }
+}
 ```
 
 ## References
@@ -795,17 +824,6 @@ We use **XML mapping** (not annotations/attributes) to keep domain entities pure
 - **Symfony Messenger**: https://symfony.com/doc/current/messenger.html
 - **Hexagonal Architecture**: https://alistair.cockburn.us/hexagonal-architecture/
 - **DDD**: "Domain-Driven Design" by Eric Evans
-
-## Migration Notes
-
-This project was migrated from Laravel 12 to Symfony 7.3. See `migration.md` for the full migration plan and implementation steps.
-
-**Key architectural changes**:
-- Cookie-based auth → JWT tokens
-- Anemic models → Rich domain models
-- Inline validation → Value objects
-- Service classes → CQRS with command/query handlers
-- Direct Eloquent → Repository pattern with Doctrine
 
 ---
 
