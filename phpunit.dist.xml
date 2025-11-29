@@ -32,6 +32,14 @@
             <directory>src</directory>
         </include>
 
+        <!-- Commands and Handlers are tested via Behat use case tests, not PHPUnit -->
+        <!-- Exceptions are simple DTOs with no logic worth unit testing -->
+        <exclude>
+            <directory>src/Application/*/Command</directory>
+            <directory>src/Application/*/Query</directory>
+            <directory>src/Domain/*/Exception</directory>
+        </exclude>
+
         <deprecationTrigger>
             <method>Doctrine\Deprecations\Deprecation::trigger</method>
             <method>Doctrine\Deprecations\Deprecation::delegateTriggerToBackend</method>
