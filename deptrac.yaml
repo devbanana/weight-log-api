@@ -30,6 +30,10 @@ deptrac:
       collectors:
         - type: classLike
           value: Symfony\\Component\\Serializer\\.*
+    - name: SymfonyMessenger
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\Messenger\\.*
 
   ruleset:
     Domain:
@@ -41,3 +45,4 @@ deptrac:
       - Domain
       - MongoDB
       - SymfonySerializer
+      - SymfonyMessenger
