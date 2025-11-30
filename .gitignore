@@ -21,9 +21,10 @@
 /.phpunit.cache/
 ###< phpunit/phpunit ###
 
-# Planning/scratch files
+# Claude Code local files
 .claude/plans/
 .claude/settings.local.json
+.claude/.DS_Store
 
 ###> friendsofphp/php-cs-fixer ###
 /.php-cs-fixer.php
