@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fa1a933bbb9fefe109d969b96d037931",
+    "content-hash": "fae41b189ff0e73107e16a65e1e0d6a0",
     "packages": [
         {
             "name": "api-platform/doctrine-common",
@@ -10984,32 +10984,33 @@
         },
         {
             "name": "shipmonk/dead-code-detector",
-            "version": "dev-feature/add-behat-support",
+            "version": "0.14.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/devbanana/dead-code-detector.git",
-                "reference": "9ed414d0a75f6aec1325210b06488db1c6de9efc"
+                "url": "https://github.com/shipmonk-rnd/dead-code-detector.git",
+                "reference": "56f9f3f1aaa5f6569719a6137be18da16d5e9678"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/devbanana/dead-code-detector/zipball/9ed414d0a75f6aec1325210b06488db1c6de9efc",
-                "reference": "9ed414d0a75f6aec1325210b06488db1c6de9efc",
+                "url": "https://api.github.com/repos/shipmonk-rnd/dead-code-detector/zipball/56f9f3f1aaa5f6569719a6137be18da16d5e9678",
+                "reference": "56f9f3f1aaa5f6569719a6137be18da16d5e9678",
                 "shasum": ""
             },
             "require": {
                 "php": "^7.4 || ^8.0",
-                "phpstan/phpstan": "^2.1.12"
+                "phpstan/phpstan": "^2.1.23"
             },
             "require-dev": {
                 "composer-runtime-api": "^2.0",
                 "composer/semver": "^3.4",
                 "doctrine/orm": "^2.19 || ^3.0",
                 "editorconfig-checker/editorconfig-checker": "^10.6.0",
-                "ergebnis/composer-normalize": "^2.45.0",
+                "ergebnis/composer-normalize": "^2.48.1",
                 "nette/application": "^3.1",
                 "nette/component-model": "^3.0",
                 "nette/utils": "^3.0 || ^4.0",
                 "nikic/php-parser": "^5.4.0",
+                "phpbench/phpbench": "^1.2",
                 "phpstan/phpstan-phpunit": "^2.0.4",
                 "phpstan/phpstan-strict-rules": "^2.0.3",
                 "phpstan/phpstan-symfony": "^2.0.2",
@@ -11042,64 +11043,22 @@
                     "ShipMonk\\PHPStan\\DeadCode\\": "src/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "ShipMonk\\PHPStan\\DeadCode\\": "tests/"
-                },
-                "classmap": [
-                    "tests/Rule/data"
-                ]
-            },
-            "scripts": {
-                "check": [
-                    "@check:composer",
-                    "@check:ec",
-                    "@check:cs",
-                    "@check:types",
-                    "@check:tests",
-                    "@check:collisions",
-                    "@check:dependencies"
-                ],
-                "check:collisions": [
-                    "detect-collisions src tests"
-                ],
-                "check:composer": [
-                    "composer normalize --dry-run --no-update-lock",
-                    "composer validate --strict"
-                ],
-                "check:cs": [
-                    "phpcs"
-                ],
-                "check:dependencies": [
-                    "composer-dependency-analyser"
-                ],
-                "check:ec": [
-                    "ec src tests"
-                ],
-                "check:tests": [
-                    "phpunit tests"
-                ],
-                "check:types": [
-                    "phpstan analyse -vv --ansi"
-                ],
-                "fix:cs": [
-                    "phpcbf"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "Dead code detector to find unused PHP code via PHPStan extension. Can automatically remove dead PHP code. Supports libraries like Symfony, Doctrine, PHPUnit etc. Detects dead cycles. Can detect dead code that is tested.",
             "keywords": [
+                "PHPStan",
                 "dead code",
-                "phpstan",
                 "static analysis",
                 "unused code"
             ],
             "support": {
-                "source": "https://github.com/devbanana/dead-code-detector/tree/feature/add-behat-support"
+                "issues": "https://github.com/shipmonk-rnd/dead-code-detector/issues",
+                "source": "https://github.com/shipmonk-rnd/dead-code-detector/tree/0.14.0"
             },
-            "time": "2025-11-22T20:41:53+00:00"
+            "time": "2025-11-25T10:32:54+00:00"
         },
         {
             "name": "staabm/side-effects-detector",
@@ -11530,10 +11489,8 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
-    "stability-flags": {
-        "shipmonk/dead-code-detector": 20
-    },
+    "minimum-stability": "dev",
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
@@ -11542,5 +11499,5 @@
         "ext-iconv": "*"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

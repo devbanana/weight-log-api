@@ -1,10 +1,17 @@
+services:
+    -
+        class: Tools\PHPStan\EventSourcedAggregatePropertiesExtension
+        tags:
+            - phpstan.properties.readWriteExtension
+    -
+        class: Tools\PHPStan\DomainInterfaceMethodUsageProvider
+        tags:
+            - shipmonk.deadCode.memberUsageProvider
+
 parameters:
     level: max
     checkTooWideReturnTypesInProtectedAndPublicMethods: true
-    checkUninitializedProperties: true
     checkBenevolentUnionTypes: true
-    reportPossiblyNonexistentGeneralArrayOffset: true
-    reportPossiblyNonexistentConstantArrayOffset: true
     reportAlwaysTrueInLastCondition: true
     reportAnyTypeWideningInVarTag: true
     checkMissingOverrideMethodAttribute: true
@@ -12,6 +19,7 @@ parameters:
     paths:
         - src
         - tests
+        - tools
 
     # Symfony-specific configuration
     # Uncomment when cache is warmed up:
