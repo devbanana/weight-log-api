@@ -11,6 +11,12 @@ services:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
+    # Autoconfigure handlers to use their respective buses
+    _instanceof:
+        App\Application\MessageBus\CommandHandlerInterface:
+            tags:
+                - { name: messenger.message_handler, bus: command.bus }
+
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
     App\:
@@ -18,3 +24,61 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # MongoDB Client
+    MongoDB\Client:
+        arguments:
+            - '%env(MONGODB_URL)%'
+
+    # MongoDB Collections
+    mongodb.collection.events:
+        class: MongoDB\Collection
+        factory: ['@MongoDB\Client', 'selectCollection']
+        arguments:
+            - '%env(MONGODB_DATABASE)%'
+            - 'events'
+
+    mongodb.collection.users:
+        class: MongoDB\Collection
+        factory: ['@MongoDB\Client', 'selectCollection']
+        arguments:
+            - '%env(MONGODB_DATABASE)%'
+            - 'users'
+
+    # Event Store (MongoDB implementation wrapped with dispatcher)
+    App\Infrastructure\Persistence\MongoDB\MongoEventStore:
+        arguments:
+            $collection: '@mongodb.collection.events'
+
+    App\Domain\Common\EventStore\EventStoreInterface:
+        class: App\Infrastructure\Persistence\EventStore\DispatchingEventStore
+        arguments:
+            $inner: '@App\Infrastructure\Persistence\MongoDB\MongoEventStore'
+            $eventBus: '@event.bus'
+
+    # Read Models
+    App\Infrastructure\Persistence\MongoDB\MongoUserReadModel:
+        arguments:
+            $collection: '@mongodb.collection.users'
+
+    App\Domain\User\UserReadModelInterface:
+        alias: App\Infrastructure\Persistence\MongoDB\MongoUserReadModel
+
+    # Projections
+    App\Infrastructure\Projection\UserProjection:
+        arguments:
+            $collection: '@mongodb.collection.users'
+
+when@test:
+    services:
+        # Make services public for testing
+        App\Domain\Common\EventStore\EventStoreInterface:
+            class: App\Infrastructure\Persistence\EventStore\DispatchingEventStore
+            public: true
+            arguments:
+                $inner: '@App\Infrastructure\Persistence\MongoDB\MongoEventStore'
+                $eventBus: '@event.bus'
+
+        App\Domain\User\UserReadModelInterface:
+            alias: App\Infrastructure\Persistence\MongoDB\MongoUserReadModel
+            public: true

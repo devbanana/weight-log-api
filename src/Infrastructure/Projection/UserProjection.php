@@ -19,7 +19,7 @@ final readonly class UserProjection
     ) {
     }
 
-    #[AsMessageHandler]
+    #[AsMessageHandler(bus: 'event.bus')]
     public function onUserRegistered(UserRegistered $event): void
     {
         $this->collection->updateOne(
