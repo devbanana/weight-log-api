@@ -1,0 +1,26 @@
+deptrac:
+  paths:
+    - ./src
+  exclude_files: ~
+  layers:
+    - name: Domain
+      collectors:
+        - type: classLike
+          value: App\\Domain\\.*
+    - name: Application
+      collectors:
+        - type: classLike
+          value: App\\Application\\.*
+    - name: Infrastructure
+      collectors:
+        - type: classLike
+          value: App\\Infrastructure\\.*
+    - name: Assertions
+      collectors:
+        - type: classLike
+          value: WebMozart\\Assert\\.*
+  ruleset:
+    Domain:
+      - Assertions
+    Application:
+      - Domain

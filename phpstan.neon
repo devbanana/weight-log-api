@@ -22,9 +22,8 @@ parameters:
         - tools
 
     # Symfony-specific configuration
-    # Uncomment when cache is warmed up:
-    # symfony:
-    #     containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
 
     # Exclude generated files
     excludePaths:

@@ -4,85 +4,88 @@ declare(strict_types=1);
 
 namespace App\Tests\UseCase;
 
+use App\Application\User\Command\RegisterUserCommand;
+use App\Domain\User\Exception\UserAlreadyExistsException;
+use App\Domain\User\User;
 use Behat\Behat\Context\Context;
+use Behat\Gherkin\Node\TableNode;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
+use Symfony\Component\Uid\Uuid;
+use Webmozart\Assert\Assert;
 
 /**
  * Use case context tests the application core using TestServiceContainer with spy objects.
  * This tests the business logic without touching real infrastructure (database, HTTP, etc).
+ *
+ * @internal
  */
 final class UserContext implements Context
 {
-    private ?object $registeredUser = null;
-    private ?\Throwable $thrownException = null;
+    private TestContainer $container;
+    private ?string $registeredUserId = null;
+    private ?\Throwable $caughtException = null;
 
-    /**
-     * @When I register with email :email and password :password
-     */
-    public function iRegisterWithEmailAndPassword(string $email, string $password): void
+    public function __construct()
     {
+        $this->container = new TestContainer();
+    }
+
+    #[When('I register with:')]
+    public function iRegisterWith(TableNode $table): void
+    {
+        $data = $table->getRowsHash();
+        Assert::keyExists($data, 'email');
+        Assert::string($data['email']);
+
+        // Generate client-side UUID (v7 is time-ordered, better for databases)
+        $this->registeredUserId = Uuid::v7()->toString();
+
+        $command = new RegisterUserCommand(
+            userId: $this->registeredUserId,
+            email: $data['email'],
+        );
+
         try {
-            // TODO: Dispatch RegisterUserCommand through TestServiceContainer
-            // Example:
-            // $command = new RegisterUserCommand($email, $password, ...);
-            // $this->messageBus->dispatch($command);
-            // $this->registeredUser = $this->userRepository->findByEmail($email);
-
-            throw new \RuntimeException('Not yet implemented');
+            $this->container->getCommandBus()->dispatch($command);
         } catch (\Throwable $e) {
-            $this->thrownException = $e;
+            $this->caughtException = $e;
         }
     }
 
-    /**
-     * @Then the user should be registered
-     */
-    public function theUserShouldBeRegistered(): void
+    #[Then('I should be registered')]
+    public function iShouldBeRegistered(): void
     {
-        if ($this->thrownException !== null) {
-            throw new \RuntimeException(
-                'Expected user to be registered, but exception was thrown: ' .
-                $this->thrownException->getMessage()
-            );
-        }
+        Assert::null($this->caughtException, 'Registration should not have thrown an exception');
+        Assert::string($this->registeredUserId, 'No user ID was registered');
 
-        if ($this->registeredUser === null) {
-            throw new \RuntimeException('Expected user to be registered, but no user was created');
-        }
+        // Verify user exists by checking events were stored and can be reconstituted
+        $events = $this->container->getEventStore()->getEvents($this->registeredUserId, User::class);
+        Assert::notEmpty($events, 'No events were stored for the user');
 
-        // TODO: Verify user was registered correctly
-        // Example:
-        // assert($this->registeredUser->getEmail() === $email);
+        // Verify we can reconstitute the user from events (would throw if invalid)
+        User::reconstitute($events);
     }
 
-    /**
-     * @Given a user exists with email :email
-     */
+    #[Given('a user exists with email :email')]
     public function aUserExistsWithEmail(string $email): void
     {
-        // TODO: Create a user directly in the test repository (spy object)
-        // Example:
-        // $user = User::register(Email::fromString($email), ...);
-        // $this->userRepository->add($user);
+        $command = new RegisterUserCommand(
+            userId: Uuid::v7()->toString(),
+            email: $email,
+        );
 
-        throw new \RuntimeException('Not yet implemented');
+        $this->container->getCommandBus()->dispatch($command);
     }
 
-    /**
-     * @Then registration should fail
-     */
+    #[Then('registration should fail')]
     public function registrationShouldFail(): void
     {
-        if ($this->thrownException === null) {
-            throw new \RuntimeException('Expected registration to fail, but it succeeded');
-        }
-
-        // TODO: Verify the correct exception was thrown
-        // Example:
-        // if (!$this->thrownException instanceof EmailAlreadyInUseException) {
-        //     throw new \RuntimeException('Wrong exception type thrown');
-        // }
+        Assert::isInstanceOf(
+            $this->caughtException,
+            UserAlreadyExistsException::class,
+            'Expected UserAlreadyExistsException to be thrown',
+        );
     }
 }
