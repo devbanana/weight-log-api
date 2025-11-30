@@ -289,9 +289,9 @@ tools/                               # Build tooling (not part of 3-layer arch)
 ### Write Operation (Command)
 
 ```
-HTTP POST /auth/register
+HTTP POST /api/auth/register
     ↓
-Infrastructure/Api/Resource/UserResource.php
+Infrastructure/Api/Resource/UserRegistrationResource.php
     ↓
 Infrastructure/Api/State/RegisterUserProcessor.php
     ↓  (dispatches via Symfony Messenger)
@@ -864,8 +864,8 @@ public function __invoke(CommandInterface $command): void
 
 ### Authentication Flow
 
-1. **Register**: `POST /auth/register` → Returns 201 Created
-2. **Login**: `POST /auth/login` → Returns JWT token
+1. **Register**: `POST /api/auth/register` → Returns 201 Created
+2. **Login**: `POST /api/auth/login` → Returns JWT token
 3. **Authenticated requests**: Add `Authorization: Bearer <token>` header
 4. **Get current user**: `GET /api/users/me`
 

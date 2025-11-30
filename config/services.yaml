@@ -69,6 +69,14 @@ services:
         arguments:
             $collection: '@mongodb.collection.users'
 
+    # Command Bus (wraps Symfony Messenger)
+    App\Infrastructure\MessageBus\MessengerCommandBus:
+        arguments:
+            $commandBus: '@command.bus'
+
+    App\Application\MessageBus\CommandBusInterface:
+        alias: App\Infrastructure\MessageBus\MessengerCommandBus
+
 when@test:
     services:
         # Make services public for testing
@@ -81,4 +89,8 @@ when@test:
 
         App\Domain\User\UserReadModelInterface:
             alias: App\Infrastructure\Persistence\MongoDB\MongoUserReadModel
+            public: true
+
+        App\Application\MessageBus\CommandBusInterface:
+            alias: App\Infrastructure\MessageBus\MessengerCommandBus
             public: true

@@ -7,6 +7,10 @@ services:
         class: Tools\PHPStan\DomainInterfaceMethodUsageProvider
         tags:
             - shipmonk.deadCode.memberUsageProvider
+    -
+        class: Tools\PHPStan\InfrastructureServiceUsageProvider
+        tags:
+            - shipmonk.deadCode.memberUsageProvider
 
 parameters:
     level: max

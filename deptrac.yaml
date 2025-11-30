@@ -34,6 +34,22 @@ deptrac:
       collectors:
         - type: classLike
           value: Symfony\\Component\\Messenger\\.*
+    - name: SymfonyValidator
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\Validator\\.*
+    - name: SymfonyUid
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\Uid\\.*
+    - name: SymfonyHttpKernel
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\HttpKernel\\.*
+    - name: ApiPlatform
+      collectors:
+        - type: classLike
+          value: ApiPlatform\\.*
 
   ruleset:
     Domain:
@@ -46,3 +62,7 @@ deptrac:
       - MongoDB
       - SymfonySerializer
       - SymfonyMessenger
+      - SymfonyValidator
+      - SymfonyUid
+      - SymfonyHttpKernel
+      - ApiPlatform
