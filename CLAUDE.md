@@ -94,9 +94,59 @@ Examples: `Email`, `UserId`, `PlainPassword`, `HashedPassword`
 
 ### 4. Ports & Adapters (Hexagonal Architecture)
 
-- **Domain defines interfaces (ports)** - `UserRepositoryInterface`, `PasswordHasherInterface`
-- **Infrastructure provides implementations (adapters)** - `DoctrineUserRepository`, `SymfonyPasswordHasher`
+- **Domain defines interfaces (ports)** - `EventStoreInterface`, `UserReadModelInterface`
+- **Infrastructure provides implementations (adapters)** - `MongoEventStore`, `MongoUserReadModel`
 - **Domain never depends on Infrastructure** - only the reverse
+
+### 5. Event Sourcing
+
+Aggregates derive state from domain events, not direct property assignment:
+
+- **Events are the source of truth** - State is rebuilt by replaying events
+- **No getters needed** - State is internal; behavior methods use it
+- **Optimistic concurrency** - Version checking prevents lost updates
+- **CQRS split** - Commands use EventStore, Queries use read model projections
+
+```php
+// Aggregate implements EventSourcedAggregateInterface
+final class User implements EventSourcedAggregateInterface
+{
+    use RecordsEvents;
+
+    public static function register(UserId $id, Email $email, \DateTimeImmutable $now): self
+    {
+        $user = new self();
+        $user->recordThat(new UserWasRegistered($id->asString(), $email->asString(), $now));
+        return $user;
+    }
+
+    public static function reconstitute(array $events): static { /* replay events */ }
+    private function apply(DomainEventInterface $event): void { /* update state */ }
+}
+```
+
+### 6. PHP 8.4 Interface Properties
+
+Use PHP 8.4 interface properties instead of methods for simple contracts:
+
+```php
+// Interface defines required properties
+interface DomainEventInterface
+{
+    public string $id { get; }
+    public \DateTimeImmutable $occurredAt { get; }
+}
+
+// Implementation satisfies interface with public readonly properties
+final readonly class UserWasRegistered implements DomainEventInterface
+{
+    public function __construct(
+        public string $id,
+        public string $email,
+        public \DateTimeImmutable $occurredAt,
+    ) {}
+}
+```
 
 ## 3-Layer Architecture
 
@@ -128,52 +178,48 @@ Examples: `Email`, `UserId`, `PlainPassword`, `HashedPassword`
 ```
 src/
 ├── Domain/                          # Layer 1: Pure Business Logic
+│   ├── Common/
+│   │   ├── Aggregate/
+│   │   │   ├── EventSourcedAggregateInterface.php  # Contract for ES aggregates
+│   │   │   └── RecordsEvents.php                   # Trait for recording events
+│   │   ├── Event/
+│   │   │   └── DomainEventInterface.php            # Event contract (PHP 8.4 properties)
+│   │   └── EventStore/
+│   │       ├── EventStoreInterface.php             # Port for event persistence
+│   │       └── ConcurrencyException.php
 │   └── User/
-│       ├── User.php                 # Aggregate root (rich model!)
-│       ├── UserRepositoryInterface.php    # Port (interface)
-│       ├── PasswordHasherInterface.php    # Port (interface)
+│       ├── User.php                 # Aggregate root (event-sourced)
+│       ├── UserReadModelInterface.php    # Port for read queries
 │       ├── ValueObject/
 │       │   ├── UserId.php           # Typed identifier
-│       │   ├── Email.php            # Self-validating
-│       │   ├── PlainPassword.php    # Input
-│       │   └── HashedPassword.php   # With verify() method
+│       │   └── Email.php            # Self-validating
 │       ├── Event/
-│       │   ├── UserWasRegistered.php
-│       │   └── PasswordWasChanged.php
+│       │   └── UserWasRegistered.php
 │       └── Exception/
 │           ├── UserAlreadyExistsException.php
-│           └── InvalidCredentialsException.php
+│           └── UserNotFoundException.php
 │
 ├── Application/                     # Layer 2: Use Cases (CQRS)
+│   ├── Clock/
+│   │   └── ClockInterface.php       # Port for time abstraction
 │   └── User/
-│       ├── Command/                 # Write operations
-│       │   ├── RegisterUser.php            # Command (DTO)
-│       │   ├── RegisterUserHandler.php     # Handler
-│       │   ├── ChangePassword.php
-│       │   └── ChangePasswordHandler.php
-│       ├── Query/                   # Read operations
-│       │   ├── FindUserById.php            # Query (DTO)
-│       │   ├── FindUserByIdHandler.php     # Handler
-│       │   ├── FindUserByEmail.php
-│       │   └── FindUserByEmailHandler.php
-│       └── DTO/                     # Response DTOs
-│           ├── UserResponse.php
-│           └── RegisterUserRequest.php
+│       └── Command/
+│           ├── RegisterUserCommand.php     # Command (DTO)
+│           └── RegisterUserHandler.php     # Handler
 │
 └── Infrastructure/                  # Layer 3: Adapters
-    ├── Api/                         # HTTP API adapter
-    │   ├── Resource/
-    │   │   └── UserResource.php     # API Platform resource
-    │   └── State/
-    │       ├── RegisterUserProcessor.php    # Dispatches commands
-    │       └── UserProvider.php             # Dispatches queries
+    ├── Clock/
+    │   └── SystemClock.php          # Production clock implementation
     ├── Persistence/                 # Database adapter
     │   └── MongoDB/
-    │       └── MongoUserRepository.php  # Implements UserRepositoryInterface
-    └── Security/                    # Auth adapter
-        ├── SymfonyPasswordHasher.php        # Implements PasswordHasherInterface
-        ├── SecurityUser.php                 # Symfony UserInterface adapter
-        └── UserProvider.php                 # Symfony UserProviderInterface
+    │       ├── MongoEventStore.php          # Implements EventStoreInterface
+    │       └── MongoUserReadModel.php       # Implements UserReadModelInterface
+    └── ...
+
+tools/                               # Build tooling (not part of 3-layer arch)
+└── phpstan/
+    ├── EventSourcedAggregatePropertiesExtension.php
+    └── DomainInterfaceMethodUsageProvider.php
 ```
 
 ## Layer Rules (Enforced by Deptrac)
@@ -705,33 +751,68 @@ final readonly class Money {
 }
 ```
 
-### Creating a Command Handler
+### Creating a Command Handler (New Aggregate)
 
 ```php
-// Application/Order/Command/PlaceOrderHandler.php
-#[AsMessageHandler]
-final readonly class PlaceOrderHandler {
+// Application/User/Command/RegisterUserHandler.php
+final readonly class RegisterUserHandler implements CommandHandlerInterface
+{
     public function __construct(
-        private OrderRepositoryInterface $orderRepository,
-        private UserRepositoryInterface $userRepository
+        private EventStoreInterface $eventStore,
+        private UserReadModelInterface $userReadModel,
+        private ClockInterface $clock,
     ) {}
 
-    public function __invoke(PlaceOrder $command): void {
-        // Load domain objects (getById throws if not found)
-        $user = $this->userRepository->getById(UserId::fromString($command->userId));
+    public function __invoke(CommandInterface $command): void
+    {
+        $email = Email::fromString($command->email);
 
-        // Create value objects
-        $orderId = $this->orderRepository->nextIdentity();
-        $total = Money::fromCents($command->totalInCents, Currency::usd());
+        // Validate via read model
+        if ($this->userReadModel->existsWithEmail($email)) {
+            throw UserAlreadyExistsException::withEmail($email);
+        }
 
-        // Use domain to create entity
-        $order = Order::place($orderId, $user->id(), $total);
+        // Create aggregate (records events internally)
+        $user = User::register(
+            UserId::fromString($command->userId),
+            $email,
+            $this->clock->now(),
+        );
 
-        // Persist
-        $this->orderRepository->add($order);
-
-        // Domain events are dispatched automatically by Doctrine event listeners
+        // Persist events (expectedVersion: 0 for new aggregates)
+        $this->eventStore->append(
+            $userId->asString(),
+            User::class,
+            $user->releaseEvents(),
+            expectedVersion: 0,
+        );
     }
+}
+```
+
+### Creating a Command Handler (Existing Aggregate)
+
+```php
+// Application/User/Command/ChangeEmailHandler.php
+public function __invoke(CommandInterface $command): void
+{
+    $userId = $command->userId;
+
+    // Load aggregate from events
+    $events = $this->eventStore->getEvents($userId, User::class);
+    $version = $this->eventStore->getVersion($userId, User::class);
+    $user = User::reconstitute($events);
+
+    // Execute behavior
+    $user->changeEmail(Email::fromString($command->newEmail));
+
+    // Persist with version check (optimistic concurrency)
+    $this->eventStore->append(
+        $userId,
+        User::class,
+        $user->releaseEvents(),
+        expectedVersion: $version,
+    );
 }
 ```
 
@@ -752,10 +833,12 @@ final readonly class PlaceOrderHandler {
 - ✅ Validate in value object constructors
 - ✅ Make value objects immutable (readonly)
 - ✅ Put business logic in entity methods
-- ✅ Define repository interfaces in Domain, implement in Infrastructure
-- ✅ Use domain events for side effects
+- ✅ Define ports in Domain, implement adapters in Infrastructure
+- ✅ Use domain events as source of truth (event sourcing)
+- ✅ Use `Aggregate::class` for aggregate type (not string literals)
 - ✅ Keep handlers thin (orchestration only)
 - ✅ Test domain logic without framework
+- ✅ Place build tooling in `tools/` (not in 3-layer architecture)
 
 ## API Development
 
