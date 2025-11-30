@@ -224,8 +224,13 @@ final class EventStoreContractTest extends TestCase
 
     private static function createMongoEventStore(): MongoEventStore
     {
-        $client = new Client('mongodb://localhost:27017');
-        $collection = $client->selectCollection('weight_log_test', 'events');
+        $mongoUrl = $_ENV['MONGODB_URL'];
+        self::assertIsString($mongoUrl, 'MONGODB_URL must be set in environment for tests');
+        $database = $_ENV['MONGODB_DATABASE'];
+        self::assertIsString($database, 'MONGODB_DATABASE must be set in environment for tests');
+
+        $client = new Client($mongoUrl);
+        $collection = $client->selectCollection($database, 'events');
         $collection->drop();
 
         $serializer = new Serializer([
