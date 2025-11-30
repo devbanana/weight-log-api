@@ -7,7 +7,7 @@ namespace App\Domain\User;
 use App\Domain\Common\Aggregate\EventSourcedAggregateInterface;
 use App\Domain\Common\Aggregate\RecordsEvents;
 use App\Domain\Common\Event\DomainEventInterface;
-use App\Domain\User\Event\UserWasRegistered;
+use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\ValueObject\Email;
 use App\Domain\User\ValueObject\UserId;
 
@@ -39,7 +39,7 @@ final class User implements EventSourcedAggregateInterface
         \DateTimeImmutable $registeredAt,
     ): self {
         $user = new self();
-        $user->recordThat(new UserWasRegistered(
+        $user->recordThat(new UserRegistered(
             $id->asString(),
             $email->asString(),
             $registeredAt,
@@ -68,7 +68,7 @@ final class User implements EventSourcedAggregateInterface
     private function apply(DomainEventInterface $event): void
     {
         match ($event::class) {
-            UserWasRegistered::class => $this->applyUserWasRegistered($event),
+            UserRegistered::class => $this->applyUserRegistered($event),
             default => throw new \InvalidArgumentException(sprintf(
                 'Unknown event type "%s" for User aggregate',
                 $event::class,
@@ -76,7 +76,7 @@ final class User implements EventSourcedAggregateInterface
         };
     }
 
-    private function applyUserWasRegistered(UserWasRegistered $event): void
+    private function applyUserRegistered(UserRegistered $event): void
     {
         $this->id = UserId::fromString($event->id);
         $this->email = Email::fromString($event->email);

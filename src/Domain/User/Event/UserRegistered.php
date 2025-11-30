@@ -9,7 +9,7 @@ use App\Domain\Common\Event\DomainEventInterface;
 /**
  * Domain event representing a user registration.
  */
-final readonly class UserWasRegistered implements DomainEventInterface
+final readonly class UserRegistered implements DomainEventInterface
 {
     public function __construct(
         public string $id,

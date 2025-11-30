@@ -7,7 +7,7 @@ namespace App\Tests\Integration\Infrastructure\Persistence;
 use App\Domain\Common\Event\DomainEventInterface;
 use App\Domain\Common\EventStore\ConcurrencyException;
 use App\Domain\Common\EventStore\EventStoreInterface;
-use App\Domain\User\Event\UserWasRegistered;
+use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\User;
 use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
 use App\Tests\UseCase\InMemoryEventStore;
@@ -61,8 +61,8 @@ final class EventStoreContractTest extends TestCase
 
         $storedEvents = $eventStore->getEvents($aggregateId, self::AGGREGATE_TYPE);
         self::assertCount(2, $storedEvents);
-        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[0]);
-        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[1]);
+        self::assertInstanceOf(UserRegistered::class, $storedEvents[0]);
+        self::assertInstanceOf(UserRegistered::class, $storedEvents[1]);
         self::assertSame('first@example.com', $storedEvents[0]->email);
         self::assertSame('second@example.com', $storedEvents[1]->email);
     }
@@ -88,7 +88,7 @@ final class EventStoreContractTest extends TestCase
         self::assertCount(2, $storedEvents);
 
         // Verify first event is properly reconstructed
-        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[0]);
+        self::assertInstanceOf(UserRegistered::class, $storedEvents[0]);
         self::assertSame('one@example.com', $storedEvents[0]->email);
 
         // Verify second event is properly reconstructed
@@ -178,8 +178,8 @@ final class EventStoreContractTest extends TestCase
 
         self::assertCount(1, $eventsForUser1);
         self::assertCount(1, $eventsForUser2);
-        self::assertInstanceOf(UserWasRegistered::class, $eventsForUser1[0]);
-        self::assertInstanceOf(UserWasRegistered::class, $eventsForUser2[0]);
+        self::assertInstanceOf(UserRegistered::class, $eventsForUser1[0]);
+        self::assertInstanceOf(UserRegistered::class, $eventsForUser2[0]);
         self::assertSame('user1@example.com', $eventsForUser1[0]->email);
         self::assertSame('user2@example.com', $eventsForUser2[0]->email);
     }
@@ -189,7 +189,7 @@ final class EventStoreContractTest extends TestCase
     {
         $aggregateId = 'user-datetime-test';
         $specificTime = new \DateTimeImmutable('2025-06-15 14:30:45', new \DateTimeZone('UTC'));
-        $event = new UserWasRegistered(
+        $event = new UserRegistered(
             id: $aggregateId,
             email: 'datetime@example.com',
             occurredAt: $specificTime,
@@ -235,7 +235,7 @@ final class EventStoreContractTest extends TestCase
         $storedEvents = $eventStore->getEvents($aggregateId, self::AGGREGATE_TYPE);
 
         self::assertCount(3, $storedEvents);
-        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[0]);
+        self::assertInstanceOf(UserRegistered::class, $storedEvents[0]);
         self::assertInstanceOf($event2::class, $storedEvents[1]);
         self::assertInstanceOf($event3::class, $storedEvents[2]);
         self::assertSame('user@example.com', $storedEvents[0]->email);
@@ -279,7 +279,7 @@ final class EventStoreContractTest extends TestCase
 
         $aggregateId = 'user-occurred-at-test';
         $specificTime = new \DateTimeImmutable('2025-06-15 14:30:45', new \DateTimeZone('UTC'));
-        $event = new UserWasRegistered(
+        $event = new UserRegistered(
             id: $aggregateId,
             email: 'document@example.com',
             occurredAt: $specificTime,
@@ -343,7 +343,7 @@ final class EventStoreContractTest extends TestCase
 
     private function createEvent(string $aggregateId, string $email = 'test@example.com'): DomainEventInterface
     {
-        return new UserWasRegistered(
+        return new UserRegistered(
             id: $aggregateId,
             email: $email,
             occurredAt: new \DateTimeImmutable('2025-01-01 12:00:00'),

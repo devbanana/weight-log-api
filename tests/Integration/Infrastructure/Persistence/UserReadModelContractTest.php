@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Infrastructure\Persistence;
 
-use App\Domain\User\Event\UserWasRegistered;
+use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\Email;
 use App\Infrastructure\Persistence\MongoDB\MongoUserReadModel;
@@ -128,7 +128,7 @@ final class UserReadModelContractTest extends TestCase
     private static function inMemorySeeder(UserReadModelInterface $readModel, string $email): void
     {
         self::assertInstanceOf(InMemoryUserReadModel::class, $readModel);
-        $readModel->handleEvent(new UserWasRegistered(
+        $readModel->handleEvent(new UserRegistered(
             id: 'user-' . md5($email),
             email: $email,
             occurredAt: new \DateTimeImmutable(),

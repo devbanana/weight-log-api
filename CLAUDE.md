@@ -91,7 +91,7 @@ class User {
             throw InvalidCredentialsException::create();
         }
         $this->password = $new;
-        $this->recordEvent(new PasswordWasChanged(...));
+        $this->recordEvent(new PasswordChanged(...));
     }
 }
 ```
@@ -136,7 +136,7 @@ final class User implements EventSourcedAggregateInterface
     public static function register(UserId $id, Email $email, \DateTimeImmutable $now): self
     {
         $user = new self();
-        $user->recordThat(new UserWasRegistered($id->asString(), $email->asString(), $now));
+        $user->recordThat(new UserRegistered($id->asString(), $email->asString(), $now));
         return $user;
     }
 
@@ -158,7 +158,7 @@ interface DomainEventInterface
 }
 
 // Implementation satisfies interface with public readonly properties
-final readonly class UserWasRegistered implements DomainEventInterface
+final readonly class UserRegistered implements DomainEventInterface
 {
     public function __construct(
         public string $id,
@@ -214,7 +214,7 @@ src/
 │       │   ├── UserId.php           # Typed identifier
 │       │   └── Email.php            # Self-validating
 │       ├── Event/
-│       │   └── UserWasRegistered.php
+│       │   └── UserRegistered.php
 │       └── Exception/
 │           ├── UserAlreadyExistsException.php
 │           └── UserNotFoundException.php
@@ -721,7 +721,7 @@ class Order {
     // Named constructor - tells a story
     public static function place(OrderId $id, UserId $userId, Money $total): self {
         $order = new self($id, $userId, $total, OrderStatus::pending());
-        $order->recordEvent(new OrderWasPlaced($id, $userId, $total));
+        $order->recordEvent(new OrderPlaced($id, $userId, $total));
         return $order;
     }
 
@@ -731,7 +731,7 @@ class Order {
             throw new InvalidOrderStateException();
         }
         $this->status = OrderStatus::completed();
-        $this->recordEvent(new OrderWasCompleted($this->id));
+        $this->recordEvent(new OrderCompleted($this->id));
     }
 }
 ```

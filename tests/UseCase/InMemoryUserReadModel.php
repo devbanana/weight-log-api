@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\UseCase;
 
 use App\Domain\Common\Event\DomainEventInterface;
-use App\Domain\User\Event\UserWasRegistered;
+use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\Email;
 
@@ -31,8 +31,8 @@ final class InMemoryUserReadModel implements UserReadModelInterface
      */
     public function handleEvent(DomainEventInterface $event): void
     {
-        if ($event instanceof UserWasRegistered) {
-            $this->applyUserWasRegistered($event);
+        if ($event instanceof UserRegistered) {
+            $this->applyUserRegistered($event);
         }
     }
 
@@ -42,7 +42,7 @@ final class InMemoryUserReadModel implements UserReadModelInterface
         return isset($this->emailIndex[$email->asString()]);
     }
 
-    private function applyUserWasRegistered(UserWasRegistered $event): void
+    private function applyUserRegistered(UserRegistered $event): void
     {
         // Normalize email to lowercase for case-insensitive matching
         $this->emailIndex[strtolower($event->email)] = true;
