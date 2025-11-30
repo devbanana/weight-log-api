@@ -76,6 +76,60 @@ final class RegisterUserEndpointTest extends WebTestCase
         self::assertResponseStatusCodeSame(201);
     }
 
+    public function testItGeneratesUuidV7ForUserId(): void
+    {
+        // Arrange: Capture the generated user ID
+        $capturedUserId = null;
+
+        $this->commandBus
+            ->expects(self::once())
+            ->method('dispatch')
+            ->with(self::callback(static function (RegisterUserCommand $command) use (&$capturedUserId): bool {
+                $capturedUserId = $command->userId;
+
+                return true;
+            }))
+        ;
+
+        // Act: Make registration request
+        $this->client->request('POST', '/api/auth/register', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'email' => 'user@example.com',
+        ], JSON_THROW_ON_ERROR));
+
+        // Assert: User ID is a valid UUID v7
+        self::assertResponseStatusCodeSame(201);
+        self::assertNotNull($capturedUserId);
+        self::assertTrue(Uuid::isValid($capturedUserId), 'userId should be a valid UUID');
+        self::assertInstanceOf(UuidV7::class, Uuid::fromString($capturedUserId), 'userId should be UUID v7 (time-ordered)');
+    }
+
+    public function testItPassesEmailToCommandWithoutNormalization(): void
+    {
+        // Arrange: Verify email is passed exactly as received
+        $this->commandBus
+            ->expects(self::once())
+            ->method('dispatch')
+            ->with(self::callback(static function (RegisterUserCommand $command): bool {
+                // Email should be passed exactly as received, not normalized to lowercase
+                self::assertSame('TEST@EXAMPLE.COM', $command->email);
+
+                return true;
+            }))
+        ;
+
+        // Act: POST with uppercase email
+        $this->client->request('POST', '/api/auth/register', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'email' => 'TEST@EXAMPLE.COM',
+        ], JSON_THROW_ON_ERROR));
+
+        // Assert: Returns 201 Created (normalization happens in domain layer)
+        self::assertResponseStatusCodeSame(201);
+    }
+
     public function testItReturns422ForInvalidEmailFormat(): void
     {
         // Arrange: Command bus should never be called for invalid input
@@ -184,35 +238,6 @@ final class RegisterUserEndpointTest extends WebTestCase
         $detail = $data['detail'];
         assert(is_string($detail));
         self::assertStringContainsString('duplicate@example.com', $detail);
-    }
-
-    public function testItGeneratesUuidV7ForUserId(): void
-    {
-        // Arrange: Capture the generated user ID
-        $capturedUserId = null;
-
-        $this->commandBus
-            ->expects(self::once())
-            ->method('dispatch')
-            ->with(self::callback(static function (RegisterUserCommand $command) use (&$capturedUserId): bool {
-                $capturedUserId = $command->userId;
-
-                return true;
-            }))
-        ;
-
-        // Act: Make registration request
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
-            'email' => 'user@example.com',
-        ], JSON_THROW_ON_ERROR));
-
-        // Assert: User ID is a valid UUID v7
-        self::assertResponseStatusCodeSame(201);
-        self::assertNotNull($capturedUserId);
-        self::assertTrue(Uuid::isValid($capturedUserId), 'userId should be a valid UUID');
-        self::assertInstanceOf(UuidV7::class, Uuid::fromString($capturedUserId), 'userId should be UUID v7 (time-ordered)');
     }
 
     public function testItReturns400ForNonStringEmail(): void
