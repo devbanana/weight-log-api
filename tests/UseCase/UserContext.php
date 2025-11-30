@@ -8,7 +8,6 @@ use App\Application\User\Command\RegisterUserCommand;
 use App\Domain\User\Exception\UserAlreadyExistsException;
 use App\Domain\User\User;
 use Behat\Behat\Context\Context;
-use Behat\Gherkin\Node\TableNode;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
@@ -32,19 +31,15 @@ final class UserContext implements Context
         $this->container = new TestContainer();
     }
 
-    #[When('I register with:')]
-    public function iRegisterWith(TableNode $table): void
+    #[When('I register with email :email')]
+    public function iRegisterWithEmail(string $email): void
     {
-        $data = $table->getRowsHash();
-        Assert::keyExists($data, 'email');
-        Assert::string($data['email']);
-
         // Generate client-side UUID (v7 is time-ordered, better for databases)
         $this->registeredUserId = Uuid::v7()->toString();
 
         $command = new RegisterUserCommand(
             userId: $this->registeredUserId,
-            email: $data['email'],
+            email: $email,
         );
 
         try {

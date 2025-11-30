@@ -5,60 +5,61 @@ declare(strict_types=1);
 namespace App\Tests\E2E;
 
 use Behat\Behat\Context\Context;
-use Behat\Behat\Tester\Exception\PendingException;
-use Behat\Gherkin\Node\TableNode;
+use Behat\Behat\Hook\Scope\BeforeScenarioScope;
+use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
+use MongoDB\Client;
+use MongoDB\Database;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Webmozart\Assert\Assert;
 
 /**
  * End-to-end context tests the full application stack with real HTTP requests.
- * This tests the complete system including API Platform, Doctrine, JWT, etc.
+ * This tests the complete system including API Platform, MongoDB, etc.
  *
  * @internal
  */
 final class UserContext implements Context
 {
     private ?Response $response = null;
+    private Database $database;
 
     public function __construct(
         private readonly KernelInterface $kernel,
+        Client $mongoClient,
+        string $mongoDatabase,
     ) {
+        $this->database = $mongoClient->selectDatabase($mongoDatabase);
     }
 
-    #[Given('no user exists with email :email')]
-    public function noUserExistsWithEmail(string $email): void
+    #[BeforeScenario]
+    public function cleanDatabase(BeforeScenarioScope $scope): void
     {
-        // TODO: Clean up database if needed
-        // For now, we rely on test database being reset between tests
+        // Drop and recreate collections to ensure clean state
+        $this->database->dropCollection('events');
+        $this->database->dropCollection('users');
     }
 
     #[Given('a user exists with email :email')]
     public function aUserExistsWithEmail(string $email): void
     {
-        // Register a user first
-        $this->iRegisterWithEmailAndPassword($email, 'SomePassword123!');
+        $this->iRegisterWithEmail($email);
 
-        // Verify it was created
-        if ($this->response?->getStatusCode() !== 201) {
-            throw new \RuntimeException('Failed to create user for test setup');
-        }
+        Assert::same(
+            $this->response?->getStatusCode(),
+            201,
+            sprintf('Failed to create user for test setup. Response: %s', $this->getResponseContent())
+        );
 
-        // Reset response for the actual test
         $this->response = null;
     }
 
-    #[When('I register with:')]
-    public function iRegisterWith(TableNode $table): void
-    {
-        throw new PendingException();
-    }
-
-    #[When('I register with email :email and password :password')]
-    public function iRegisterWithEmailAndPassword(string $email, string $password): void
+    #[When('I register with email :email')]
+    public function iRegisterWithEmail(string $email): void
     {
         $request = Request::create(
             uri: '/api/auth/register',
@@ -69,8 +70,6 @@ final class UserContext implements Context
             ],
             content: json_encode([
                 'email' => $email,
-                'password' => $password,
-                // TODO: Add other required fields (display_name, date_of_birth, etc.)
             ], JSON_THROW_ON_ERROR)
         );
 
@@ -80,67 +79,44 @@ final class UserContext implements Context
     #[Then('I should be registered')]
     public function iShouldBeRegistered(): void
     {
-        if ($this->response === null) {
-            throw new \RuntimeException('No response received');
-        }
-
-        $content = $this->response->getContent();
-        if ($content === false) {
-            throw new \RuntimeException('There was an error retrieving the response content');
-        }
-
-        $statusCode = $this->response->getStatusCode();
-        if ($statusCode !== 201) {
-            throw new \RuntimeException(
-                sprintf(
-                    'Expected 201 status code, got %d. Response: %s',
-                    $statusCode,
-                    $content
-                )
-            );
-        }
+        Assert::notNull($this->response, 'No response received');
+        Assert::same(
+            $this->response->getStatusCode(),
+            201,
+            sprintf('Expected 201 status code. Response: %s', $this->getResponseContent())
+        );
     }
 
     #[Then('registration should fail')]
     public function registrationShouldFail(): void
     {
-        if ($this->response === null) {
-            throw new \RuntimeException('No response received');
-        }
-
-        $statusCode = $this->response->getStatusCode();
-        if ($statusCode < 400) {
-            throw new \RuntimeException(
-                sprintf(
-                    'Expected error status code (4xx or 5xx), got %d',
-                    $statusCode
-                )
-            );
-        }
+        Assert::notNull($this->response, 'No response received');
+        Assert::greaterThanEq(
+            $this->response->getStatusCode(),
+            400,
+            sprintf('Expected error status code (4xx or 5xx), got %d', $this->response->getStatusCode())
+        );
     }
 
     #[Then('I should receive a :statusCode response')]
     public function iShouldReceiveAResponse(int $statusCode): void
     {
-        if ($this->response === null) {
-            throw new \RuntimeException('No response received');
+        Assert::notNull($this->response, 'No response received');
+        Assert::same(
+            $this->response->getStatusCode(),
+            $statusCode,
+            sprintf('Expected %d status code. Response: %s', $statusCode, $this->getResponseContent())
+        );
+    }
+
+    private function getResponseContent(): string
+    {
+        $content = $this->response?->getContent();
+
+        if ($content === false || $content === null) {
+            return 'No content';
         }
 
-        $content = $this->response->getContent();
-        if ($content === false) {
-            throw new \RuntimeException('There was an error retrieving the response content');
-        }
-
-        $actualStatusCode = $this->response->getStatusCode();
-        if ($actualStatusCode !== $statusCode) {
-            throw new \RuntimeException(
-                sprintf(
-                    'Expected %d status code, got %d. Response: %s',
-                    $statusCode,
-                    $actualStatusCode,
-                    $content
-                )
-            );
-        }
+        return $content;
     }
 }

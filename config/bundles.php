@@ -9,6 +9,7 @@ use FriendsOfBehat\SymfonyExtension\Bundle\FriendsOfBehatSymfonyExtensionBundle;
 use Lexik\Bundle\JWTAuthenticationBundle\LexikJWTAuthenticationBundle;
 use Nelmio\CorsBundle\NelmioCorsBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
+use Symfony\Bundle\MonologBundle\MonologBundle;
 use Symfony\Bundle\SecurityBundle\SecurityBundle;
 use Symfony\Bundle\TwigBundle\TwigBundle;
 
@@ -22,4 +23,5 @@ return [
     ApiPlatformBundle::class => ['all' => true],
     LexikJWTAuthenticationBundle::class => ['all' => true],
     FriendsOfBehatSymfonyExtensionBundle::class => ['test' => true],
+    MonologBundle::class => ['all' => true],
 ];

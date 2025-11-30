@@ -80,6 +80,11 @@ services:
 when@test:
     services:
         # Make services public for testing
+        MongoDB\Client:
+            public: true
+            arguments:
+                - '%env(MONGODB_URL)%'
+
         App\Domain\Common\EventStore\EventStoreInterface:
             class: App\Infrastructure\Persistence\EventStore\DispatchingEventStore
             public: true

@@ -6,6 +6,7 @@ namespace App\Infrastructure\MessageBus;
 
 use App\Application\MessageBus\CommandBusInterface;
 use App\Application\MessageBus\CommandInterface;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
@@ -24,6 +25,17 @@ final readonly class MessengerCommandBus implements CommandBusInterface
     #[\Override]
     public function dispatch(CommandInterface $command): void
     {
-        $this->commandBus->dispatch($command);
+        try {
+            $this->commandBus->dispatch($command);
+        } catch (HandlerFailedException $e) {
+            // Unwrap the original exception from Messenger's wrapper
+            // This allows domain exceptions to propagate cleanly to callers
+            $wrapped = $e->getWrappedExceptions();
+            if (count($wrapped) === 1) {
+                throw reset($wrapped);
+            }
+
+            throw $e;
+        }
     }
 }

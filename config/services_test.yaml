@@ -2,13 +2,14 @@ services:
     _defaults:
         autowire: true
         autoconfigure: true
-        public: true
 
     # Behat contexts need to be public services
     App\Tests\UseCase\UserContext:
-        autowire: true
+        public: true
 
     App\Tests\E2E\UserContext:
-        autowire: true
+        public: true
         arguments:
             $kernel: '@kernel'
+            $mongoClient: '@MongoDB\Client'
+            $mongoDatabase: '%env(MONGODB_DATABASE)%'

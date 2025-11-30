@@ -104,6 +104,7 @@
         "phpunit/phpunit": "^12.4",
         "shipmonk/dead-code-detector": "^0.14.0",
         "symfony/browser-kit": "7.3.*",
+        "symfony/monolog-bundle": "^4.0",
         "symfony/phpunit-bridge": "^7.3",
         "webmozart/assert": "^1.12"
     }
