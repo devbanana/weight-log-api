@@ -44,6 +44,7 @@ final class InMemoryUserReadModel implements UserReadModelInterface
 
     private function applyUserWasRegistered(UserWasRegistered $event): void
     {
-        $this->emailIndex[$event->email] = true;
+        // Normalize email to lowercase for case-insensitive matching
+        $this->emailIndex[strtolower($event->email)] = true;
     }
 }
