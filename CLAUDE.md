@@ -40,6 +40,26 @@ This is a **Symfony 7.3 API application** for weight logging, implementing **str
 - **Code Style**: PHP-CS-Fixer
 - **Architecture Validation**: Deptrac
 
+### Type Narrowing Preference
+
+Avoid `@var` annotations for inline type narrowing. Instead, use `assert()` which provides both runtime validation and static analysis type narrowing:
+
+```php
+// ❌ Avoid: @var lies to the type system without runtime checks
+/** @var array<string, mixed> $data */
+$data = $serializer->normalize($event);
+
+// ✅ Prefer: assert() validates at runtime AND narrows types for PHPStan
+$data = $serializer->normalize($event);
+assert(is_array($data));
+
+// ✅ Also good for object types
+$event = $serializer->denormalize($data, $eventType);
+assert($event instanceof DomainEventInterface);
+```
+
+**Note**: `@var` on class properties is fine - this preference applies only to inline variable annotations.
+
 ## Architecture Principles
 
 Following Matthias Noback's guidance from "Advanced Web Application Architecture":
@@ -103,7 +123,7 @@ Examples: `Email`, `UserId`, `PlainPassword`, `HashedPassword`
 Aggregates derive state from domain events, not direct property assignment:
 
 - **Events are the source of truth** - State is rebuilt by replaying events
-- **No getters needed** - State is internal; behavior methods use it
+- **Getters only when justified** - Add getters only when required by real business use cases in Domain/Application layers. Never add getters just for database persistence or tests.
 - **Optimistic concurrency** - Version checking prevents lost updates
 - **CQRS split** - Commands use EventStore, Queries use read model projections
 
