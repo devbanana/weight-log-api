@@ -3,6 +3,7 @@ deptrac:
     - ./src
   exclude_files: ~
   layers:
+    # Application layers
     - name: Domain
       collectors:
         - type: classLike
@@ -15,12 +16,28 @@ deptrac:
       collectors:
         - type: classLike
           value: App\\Infrastructure\\.*
+
+    # External libraries
     - name: Assertions
       collectors:
         - type: classLike
           value: WebMozart\\Assert\\.*
+    - name: MongoDB
+      collectors:
+        - type: classLike
+          value: ^MongoDB\\.*
+    - name: SymfonySerializer
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\Serializer\\.*
+
   ruleset:
     Domain:
       - Assertions
     Application:
       - Domain
+    Infrastructure:
+      - Application
+      - Domain
+      - MongoDB
+      - SymfonySerializer
