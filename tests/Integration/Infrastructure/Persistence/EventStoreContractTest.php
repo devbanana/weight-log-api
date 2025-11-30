@@ -9,9 +9,14 @@ use App\Domain\Common\EventStore\ConcurrencyException;
 use App\Domain\Common\EventStore\EventStoreInterface;
 use App\Domain\User\Event\UserWasRegistered;
 use App\Domain\User\User;
+use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
 use App\Tests\UseCase\InMemoryEventStore;
+use MongoDB\Client;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Serializer\Serializer;
 
 /**
  * Contract tests for EventStore implementations.
@@ -19,6 +24,7 @@ use PHPUnit\Framework\TestCase;
  * All implementations of EventStoreInterface must pass these tests
  * to ensure consistent behavior across adapters.
  *
+ * @covers \App\Infrastructure\Persistence\MongoDB\MongoEventStore
  * @covers \App\Tests\UseCase\InMemoryEventStore
  *
  * @internal
@@ -100,6 +106,17 @@ final class EventStoreContractTest extends TestCase
     }
 
     #[DataProvider('eventStoreProvider')]
+    public function testItThrowsConcurrencyExceptionWhenExpectedVersionTooHigh(EventStoreInterface $eventStore): void
+    {
+        $aggregateId = 'user-high-version';
+
+        $this->expectException(ConcurrencyException::class);
+
+        // Try to append with expected version 5 when no events exist (version is 0)
+        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$this->createEvent($aggregateId)], expectedVersion: 5);
+    }
+
+    #[DataProvider('eventStoreProvider')]
     public function testItReturnsEmptyArrayForNonExistentAggregate(EventStoreInterface $eventStore): void
     {
         $events = $eventStore->getEvents('non-existent-id', self::AGGREGATE_TYPE);
@@ -128,6 +145,71 @@ final class EventStoreContractTest extends TestCase
         self::assertSame(0, $eventStore->getVersion($aggregateId, 'Order'));
     }
 
+    #[DataProvider('eventStoreProvider')]
+    public function testItIsolatesEventsByAggregateId(EventStoreInterface $eventStore): void
+    {
+        $event1 = $this->createEvent('user-1', 'user1@example.com');
+        $event2 = $this->createEvent('user-2', 'user2@example.com');
+
+        $eventStore->append('user-1', self::AGGREGATE_TYPE, [$event1], expectedVersion: 0);
+        $eventStore->append('user-2', self::AGGREGATE_TYPE, [$event2], expectedVersion: 0);
+
+        $eventsForUser1 = $eventStore->getEvents('user-1', self::AGGREGATE_TYPE);
+        $eventsForUser2 = $eventStore->getEvents('user-2', self::AGGREGATE_TYPE);
+
+        self::assertCount(1, $eventsForUser1);
+        self::assertCount(1, $eventsForUser2);
+        self::assertInstanceOf(UserWasRegistered::class, $eventsForUser1[0]);
+        self::assertInstanceOf(UserWasRegistered::class, $eventsForUser2[0]);
+        self::assertSame('user1@example.com', $eventsForUser1[0]->email);
+        self::assertSame('user2@example.com', $eventsForUser2[0]->email);
+    }
+
+    #[DataProvider('eventStoreProvider')]
+    public function testItPreservesDateTimeImmutablePrecision(EventStoreInterface $eventStore): void
+    {
+        $aggregateId = 'user-datetime-test';
+        $specificTime = new \DateTimeImmutable('2025-06-15 14:30:45', new \DateTimeZone('UTC'));
+        $event = new UserWasRegistered(
+            id: $aggregateId,
+            email: 'datetime@example.com',
+            occurredAt: $specificTime,
+        );
+
+        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$event], expectedVersion: 0);
+
+        $storedEvents = $eventStore->getEvents($aggregateId, self::AGGREGATE_TYPE);
+
+        self::assertCount(1, $storedEvents);
+        self::assertInstanceOf(\DateTimeImmutable::class, $storedEvents[0]->occurredAt);
+        self::assertSame(
+            $specificTime->format(\DateTimeInterface::ATOM),
+            $storedEvents[0]->occurredAt->format(\DateTimeInterface::ATOM),
+        );
+    }
+
+    #[DataProvider('eventStoreProvider')]
+    public function testItReturnsEventsInVersionOrder(EventStoreInterface $eventStore): void
+    {
+        $aggregateId = 'user-order-test';
+        $event1 = $this->createEvent($aggregateId, 'first@example.com');
+        $event2 = $this->createEvent($aggregateId, 'second@example.com');
+        $event3 = $this->createEvent($aggregateId, 'third@example.com');
+
+        // Append all at once to ensure ordering is by version, not insertion
+        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$event1, $event2, $event3], expectedVersion: 0);
+
+        $storedEvents = $eventStore->getEvents($aggregateId, self::AGGREGATE_TYPE);
+
+        self::assertCount(3, $storedEvents);
+        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[0]);
+        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[1]);
+        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[2]);
+        self::assertSame('first@example.com', $storedEvents[0]->email);
+        self::assertSame('second@example.com', $storedEvents[1]->email);
+        self::assertSame('third@example.com', $storedEvents[2]->email);
+    }
+
     /**
      * @return \Generator<string, array{EventStoreInterface}>
      */
@@ -137,8 +219,21 @@ final class EventStoreContractTest extends TestCase
         // and ensures the test double used in Behat use case tests behaves correctly
         yield 'InMemory' => [new InMemoryEventStore()];
 
-        // TODO: Add MongoEventStore when implemented
-        // yield 'MongoDB' => [self::createMongoEventStore()];
+        yield 'MongoDB' => [self::createMongoEventStore()];
+    }
+
+    private static function createMongoEventStore(): MongoEventStore
+    {
+        $client = new Client('mongodb://localhost:27017');
+        $collection = $client->selectCollection('weight_log_test', 'events');
+        $collection->drop();
+
+        $serializer = new Serializer([
+            new DateTimeNormalizer(),
+            new ObjectNormalizer(),
+        ]);
+
+        return new MongoEventStore($collection, $serializer);
     }
 
     private function createEvent(string $aggregateId, string $email = 'test@example.com'): DomainEventInterface

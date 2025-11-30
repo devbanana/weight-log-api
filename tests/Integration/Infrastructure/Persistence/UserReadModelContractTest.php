@@ -7,7 +7,10 @@ namespace App\Tests\Integration\Infrastructure\Persistence;
 use App\Domain\User\Event\UserWasRegistered;
 use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\Email;
+use App\Infrastructure\Persistence\MongoDB\MongoUserReadModel;
 use App\Tests\UseCase\InMemoryUserReadModel;
+use MongoDB\Client;
+use MongoDB\Collection;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -17,12 +20,15 @@ use PHPUnit\Framework\TestCase;
  * All implementations of UserReadModelInterface must pass these tests
  * to ensure consistent query behavior across adapters.
  *
+ * @covers \App\Infrastructure\Persistence\MongoDB\MongoUserReadModel
  * @covers \App\Tests\UseCase\InMemoryUserReadModel
  *
  * @internal
  */
 final class UserReadModelContractTest extends TestCase
 {
+    private static ?Collection $mongoCollection = null;
+
     /**
      * @param callable(UserReadModelInterface, string): void $seeder
      */
@@ -99,20 +105,37 @@ final class UserReadModelContractTest extends TestCase
             self::inMemorySeeder(...),
         ];
 
-        // TODO: Add MongoUserReadModel when implemented
-        // yield 'MongoDB' => [
-        //     self::createMongoUserReadModel(),
-        //     self::mongoSeeder(...),
-        // ];
+        yield 'MongoDB' => [
+            self::createMongoUserReadModel(),
+            self::mongoSeeder(...),
+        ];
+    }
+
+    private static function createMongoUserReadModel(): MongoUserReadModel
+    {
+        $client = new Client('mongodb://localhost:27017');
+        self::$mongoCollection = $client->selectCollection('weight_log_test', 'users');
+        self::$mongoCollection->drop();
+
+        return new MongoUserReadModel(self::$mongoCollection);
     }
 
     private static function inMemorySeeder(UserReadModelInterface $readModel, string $email): void
     {
-        assert($readModel instanceof InMemoryUserReadModel);
+        self::assertInstanceOf(InMemoryUserReadModel::class, $readModel);
         $readModel->handleEvent(new UserWasRegistered(
             id: 'user-' . md5($email),
             email: $email,
             occurredAt: new \DateTimeImmutable(),
         ));
+    }
+
+    private static function mongoSeeder(UserReadModelInterface $readModel, string $email): void
+    {
+        self::assertNotNull(self::$mongoCollection);
+        self::$mongoCollection->insertOne([
+            '_id' => 'user-' . md5($email),
+            'email' => strtolower($email),
+        ]);
     }
 }
