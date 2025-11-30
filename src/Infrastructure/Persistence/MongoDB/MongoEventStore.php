@@ -7,6 +7,7 @@ namespace App\Infrastructure\Persistence\MongoDB;
 use App\Domain\Common\Event\DomainEventInterface;
 use App\Domain\Common\EventStore\ConcurrencyException;
 use App\Domain\Common\EventStore\EventStoreInterface;
+use MongoDB\BSON\UTCDateTime;
 use MongoDB\Collection;
 use MongoDB\Model\BSONDocument;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -30,6 +31,14 @@ final readonly class MongoEventStore implements EventStoreInterface
         array $events,
         int $expectedVersion,
     ): void {
+        foreach ($events as $event) {
+            if ($event->id !== $aggregateId) {
+                throw new \InvalidArgumentException(
+                    sprintf('Event ID "%s" does not match aggregate ID "%s"', $event->id, $aggregateId),
+                );
+            }
+        }
+
         $currentVersion = $this->getVersion($aggregateId, $aggregateType);
 
         if ($currentVersion !== $expectedVersion) {
@@ -55,7 +64,7 @@ final readonly class MongoEventStore implements EventStoreInterface
                 'event_type' => $event::class,
                 'event_data' => $eventData,
                 'version' => $version,
-                'occurred_at' => $event->occurredAt,
+                'occurred_at' => new UTCDateTime($event->occurredAt),
             ]);
         }
     }

@@ -11,7 +11,10 @@ use App\Domain\User\Event\UserWasRegistered;
 use App\Domain\User\User;
 use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
 use App\Tests\UseCase\InMemoryEventStore;
+use MongoDB\BSON\UTCDateTime;
 use MongoDB\Client;
+use MongoDB\Collection;
+use MongoDB\Model\BSONDocument;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
@@ -65,17 +68,33 @@ final class EventStoreContractTest extends TestCase
     }
 
     #[DataProvider('eventStoreProvider')]
-    public function testItAppendsMultipleEventsAtOnce(EventStoreInterface $eventStore): void
+    public function testItCanAppendMultipleEventsAtOnce(EventStoreInterface $eventStore): void
     {
         $aggregateId = 'user-789';
         $event1 = $this->createEvent($aggregateId, 'one@example.com');
-        $event2 = $this->createEvent($aggregateId, 'two@example.com');
+        $event2 = new class($aggregateId) implements DomainEventInterface {
+            public function __construct(
+                public string $id,
+                public string $newEmail = 'newemail@example.com',
+                public \DateTimeImmutable $occurredAt = new \DateTimeImmutable('2025-01-01 13:00:00'),
+            ) {
+            }
+        };
 
         $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$event1, $event2], expectedVersion: 0);
 
         self::assertSame(2, $eventStore->getVersion($aggregateId, self::AGGREGATE_TYPE));
         $storedEvents = $eventStore->getEvents($aggregateId, self::AGGREGATE_TYPE);
         self::assertCount(2, $storedEvents);
+
+        // Verify first event is properly reconstructed
+        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[0]);
+        self::assertSame('one@example.com', $storedEvents[0]->email);
+
+        // Verify second event is properly reconstructed
+        self::assertSame($event2->id, $storedEvents[1]->id);
+        self::assertInstanceOf($event2::class, $storedEvents[1]);
+        self::assertSame('newemail@example.com', $storedEvents[1]->newEmail);
     }
 
     #[DataProvider('eventStoreProvider')]
@@ -192,9 +211,23 @@ final class EventStoreContractTest extends TestCase
     public function testItReturnsEventsInVersionOrder(EventStoreInterface $eventStore): void
     {
         $aggregateId = 'user-order-test';
-        $event1 = $this->createEvent($aggregateId, 'first@example.com');
-        $event2 = $this->createEvent($aggregateId, 'second@example.com');
-        $event3 = $this->createEvent($aggregateId, 'third@example.com');
+        $event1 = $this->createEvent($aggregateId, 'user@example.com');
+        $event2 = new class($aggregateId) implements DomainEventInterface {
+            public function __construct(
+                public string $id,
+                public string $newEmail = 'newemail@example.com',
+                public \DateTimeImmutable $occurredAt = new \DateTimeImmutable('2025-01-01 13:00:00'),
+            ) {
+            }
+        };
+        $event3 = new class($aggregateId) implements DomainEventInterface {
+            public function __construct(
+                public string $id,
+                public bool $passwordChanged = true,
+                public \DateTimeImmutable $occurredAt = new \DateTimeImmutable('2025-01-01 14:00:00'),
+            ) {
+            }
+        };
 
         // Append all at once to ensure ordering is by version, not insertion
         $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$event1, $event2, $event3], expectedVersion: 0);
@@ -203,11 +236,24 @@ final class EventStoreContractTest extends TestCase
 
         self::assertCount(3, $storedEvents);
         self::assertInstanceOf(UserWasRegistered::class, $storedEvents[0]);
-        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[1]);
-        self::assertInstanceOf(UserWasRegistered::class, $storedEvents[2]);
-        self::assertSame('first@example.com', $storedEvents[0]->email);
-        self::assertSame('second@example.com', $storedEvents[1]->email);
-        self::assertSame('third@example.com', $storedEvents[2]->email);
+        self::assertInstanceOf($event2::class, $storedEvents[1]);
+        self::assertInstanceOf($event3::class, $storedEvents[2]);
+        self::assertSame('user@example.com', $storedEvents[0]->email);
+        self::assertSame('newemail@example.com', $storedEvents[1]->newEmail);
+        self::assertTrue($storedEvents[2]->passwordChanged);
+    }
+
+    #[DataProvider('eventStoreProvider')]
+    public function testItDisallowsAppendingEventsWithDifferentAggregateIds(EventStoreInterface $eventStore): void
+    {
+        $aggregateId1 = 'user-1';
+        $aggregateId2 = 'user-2';
+        $event1 = $this->createEvent($aggregateId1, 'first@example.com');
+        $event2 = $this->createEvent($aggregateId2, 'second@example.com');
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $eventStore->append($aggregateId1, self::AGGREGATE_TYPE, [$event1, $event2], expectedVersion: 0);
     }
 
     /**
@@ -222,7 +268,56 @@ final class EventStoreContractTest extends TestCase
         yield 'MongoDB' => [self::createMongoEventStore()];
     }
 
+    /**
+     * MongoDB-specific test to verify the raw document structure.
+     * This ensures occurred_at is stored as a proper BSON UTCDateTime.
+     */
+    public function testMongoDocumentContainsValidOccurredAtField(): void
+    {
+        $collection = self::createMongoCollection();
+        $eventStore = self::createMongoEventStoreWithCollection($collection);
+
+        $aggregateId = 'user-occurred-at-test';
+        $specificTime = new \DateTimeImmutable('2025-06-15 14:30:45', new \DateTimeZone('UTC'));
+        $event = new UserWasRegistered(
+            id: $aggregateId,
+            email: 'document@example.com',
+            occurredAt: $specificTime,
+        );
+
+        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$event], expectedVersion: 0);
+
+        // Query the raw document directly
+        $document = $collection->findOne([
+            'aggregate_id' => $aggregateId,
+            'aggregate_type' => self::AGGREGATE_TYPE,
+        ]);
+
+        self::assertNotNull($document, 'Document should exist in collection');
+        self::assertInstanceOf(BSONDocument::class, $document);
+        self::assertArrayHasKey('occurred_at', $document);
+
+        $occurredAt = $document['occurred_at'];
+        self::assertInstanceOf(
+            UTCDateTime::class,
+            $occurredAt,
+            'occurred_at should be stored as BSON UTCDateTime',
+        );
+
+        // Verify the timestamp value matches
+        $storedDateTime = $occurredAt->toDateTime();
+        self::assertSame(
+            $specificTime->format('Y-m-d H:i:s'),
+            $storedDateTime->format('Y-m-d H:i:s'),
+        );
+    }
+
     private static function createMongoEventStore(): MongoEventStore
+    {
+        return self::createMongoEventStoreWithCollection(self::createMongoCollection());
+    }
+
+    private static function createMongoCollection(): Collection
     {
         $mongoUrl = $_ENV['MONGODB_URL'];
         self::assertIsString($mongoUrl, 'MONGODB_URL must be set in environment for tests');
@@ -233,6 +328,11 @@ final class EventStoreContractTest extends TestCase
         $collection = $client->selectCollection($database, 'events');
         $collection->drop();
 
+        return $collection;
+    }
+
+    private static function createMongoEventStoreWithCollection(Collection $collection): MongoEventStore
+    {
         $serializer = new Serializer([
             new DateTimeNormalizer(),
             new ObjectNormalizer(),

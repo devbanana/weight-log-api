@@ -50,10 +50,13 @@ final class InMemoryEventStore implements EventStoreInterface
         array $events,
         int $expectedVersion,
     ): void {
-        assert(
-            array_all($events, static fn (DomainEventInterface $e): bool => $e->id === $aggregateId),
-            'All events must belong to the same aggregate',
-        );
+        foreach ($events as $event) {
+            if ($event->id !== $aggregateId) {
+                throw new \InvalidArgumentException(
+                    sprintf('Event ID "%s" does not match aggregate ID "%s"', $event->id, $aggregateId),
+                );
+            }
+        }
 
         $currentVersion = $this->getVersion($aggregateId, $aggregateType);
 
