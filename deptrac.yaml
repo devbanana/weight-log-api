@@ -46,6 +46,10 @@ deptrac:
       collectors:
         - type: classLike
           value: Symfony\\Component\\HttpKernel\\.*
+    - name: SymfonyConsole
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\Console\\.*
     - name: ApiPlatform
       collectors:
         - type: classLike
@@ -65,4 +69,5 @@ deptrac:
       - SymfonyValidator
       - SymfonyUid
       - SymfonyHttpKernel
+      - SymfonyConsole
       - ApiPlatform

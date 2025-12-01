@@ -15,8 +15,8 @@ Always start by running the available analysis tools:
 # Run PHPStan at max level with strict rules
 composer analyze
 
-# Validate architecture boundaries
-vendor/bin/deptrac analyse
+# Validate architecture boundaries (including uncovered dependencies)
+vendor/bin/deptrac analyse --report-uncovered
 
 # Check code style
 vendor/bin/php-cs-fixer fix --dry-run --diff

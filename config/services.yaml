@@ -69,6 +69,12 @@ services:
         arguments:
             $collection: '@mongodb.collection.users'
 
+    # Console Commands
+    App\Infrastructure\Console\CreateMongoIndicesCommand:
+        arguments:
+            $eventsCollection: '@mongodb.collection.events'
+            $usersCollection: '@mongodb.collection.users'
+
     # Command Bus (wraps Symfony Messenger)
     App\Infrastructure\MessageBus\MessengerCommandBus:
         arguments:

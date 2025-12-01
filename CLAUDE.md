@@ -60,6 +60,26 @@ assert($event instanceof DomainEventInterface);
 
 **Note**: `@var` on class properties is fine - this preference applies only to inline variable annotations.
 
+### Static Private Methods
+
+Prefer `private static` over `private` for helper methods that don't use `$this`:
+
+```php
+// ✅ Prefer: static when method doesn't use instance state
+private static function formatEmail(string $email): string
+{
+    return strtolower(trim($email));
+}
+
+// ❌ Avoid: non-static when $this isn't needed
+private function formatEmail(string $email): string
+{
+    return strtolower(trim($email));
+}
+```
+
+This makes it explicit that the method is a pure function with no side effects on instance state.
+
 ## Architecture Principles
 
 Following Matthias Noback's guidance from "Advanced Web Application Architecture":
@@ -222,19 +242,34 @@ src/
 ├── Application/                     # Layer 2: Use Cases (CQRS)
 │   ├── Clock/
 │   │   └── ClockInterface.php       # Port for time abstraction
+│   ├── MessageBus/
+│   │   ├── CommandBusInterface.php       # Port for dispatching commands
+│   │   └── CommandHandlerInterface.php   # Marker for auto-tagging handlers
 │   └── User/
 │       └── Command/
 │           ├── RegisterUserCommand.php     # Command (DTO)
 │           └── RegisterUserHandler.php     # Handler
 │
 └── Infrastructure/                  # Layer 3: Adapters
+    ├── Api/                         # API Platform adapters
+    │   ├── Resource/
+    │   │   └── UserRegistrationResource.php  # Input DTO + validation
+    │   └── State/
+    │       └── RegisterUserProcessor.php     # Driving adapter
     ├── Clock/
     │   └── SystemClock.php          # Production clock implementation
-    ├── Persistence/                 # Database adapter
+    ├── Console/
+    │   └── CreateMongoIndicesCommand.php    # MongoDB index setup
+    ├── MessageBus/
+    │   └── MessengerCommandBus.php          # Symfony Messenger adapter
+    ├── Persistence/
+    │   ├── EventStore/
+    │   │   └── DispatchingEventStore.php    # Decorator for event dispatch
     │   └── MongoDB/
     │       ├── MongoEventStore.php          # Implements EventStoreInterface
     │       └── MongoUserReadModel.php       # Implements UserReadModelInterface
-    └── ...
+    └── Projection/
+        └── UserProjection.php               # Updates read model from events
 
 tools/                               # Build tooling (not part of 3-layer arch)
 └── phpstan/
@@ -291,35 +326,30 @@ tools/                               # Build tooling (not part of 3-layer arch)
 ```
 HTTP POST /api/auth/register
     ↓
-Infrastructure/Api/Resource/UserRegistrationResource.php
+Infrastructure/Api/Resource/UserRegistrationResource.php (input DTO + validation)
     ↓
-Infrastructure/Api/State/RegisterUserProcessor.php
-    ↓  (dispatches via Symfony Messenger)
+Infrastructure/Api/State/RegisterUserProcessor.php (driving adapter)
+    ↓  (dispatches via Symfony Messenger command.bus)
 Application/User/Command/RegisterUserHandler.php
-    ↓  (uses domain)
-Domain/User/User::register()
-    ↓  (persists via port)
-Domain/User/UserRepositoryInterface
-    ↓  (implemented by adapter)
-Infrastructure/Persistence/MongoDB/MongoUserRepository.php
+    ↓  (checks read model, creates aggregate)
+Domain/User/User::register() → records UserRegistered event
+    ↓  (persists via EventStore port)
+Infrastructure/Persistence/MongoDB/MongoEventStore.php
+    ↓  (dispatches event via event.bus)
+Infrastructure/Projection/UserProjection.php → updates read model
 ```
 
 ### Read Operation (Query)
 
 ```
-HTTP GET /api/users/me
-    ↓
-Infrastructure/Api/Resource/UserResource.php
+HTTP GET /api/users/{id}
     ↓
 Infrastructure/Api/State/UserProvider.php
-    ↓  (dispatches via Symfony Messenger)
-Application/User/Query/FindUserByIdHandler.php
-    ↓  (queries via port)
-Domain/User/UserRepositoryInterface
+    ↓  (queries read model directly or via query.bus)
+Domain/User/UserReadModelInterface
     ↓  (implemented by adapter)
-Infrastructure/Persistence/MongoDB/MongoUserRepository.php
-    ↓  (returns DTO)
-Application/User/DTO/UserResponse.php
+Infrastructure/Persistence/MongoDB/MongoUserReadModel.php
+    ↓  (returns data for API response)
 ```
 
 ## Development Guidelines
@@ -549,7 +579,10 @@ vendor/bin/behat --suite=usecase
 vendor/bin/phpunit --testsuite=integration
 
 # End-to-end tests (slow - run before deploy)
-vendor/bin/behat --profile=e2e --suite=e2e
+vendor/bin/behat --suite=e2e
+
+# All Behat tests (both suites)
+vendor/bin/behat
 
 # All tests
 composer test
@@ -701,8 +734,8 @@ composer analyze
 # Run tests
 composer test
 
-# Validate architecture boundaries
-vendor/bin/deptrac analyse
+# Validate architecture boundaries (including uncovered dependencies)
+vendor/bin/deptrac analyse --report-uncovered
 ```
 
 ## Common Patterns
@@ -883,7 +916,10 @@ public function __invoke(CommandInterface $command): void
 
 ```bash
 # .env
-DATABASE_URL="postgresql://user:pass@localhost:5432/weightlog?serverVersion=16"
+MONGODB_URL="mongodb://localhost:27017"
+MONGODB_DATABASE="weight_log"
+
+# JWT (not yet implemented)
 JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
 JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
 JWT_PASSPHRASE=your-passphrase
@@ -892,32 +928,25 @@ JWT_TOKEN_TTL=3600  # 1 hour
 
 ### MongoDB Persistence
 
-Repositories in `Infrastructure/Persistence/MongoDB/` handle converting domain aggregates to/from BSON documents:
+We use **event sourcing** - aggregates are persisted as streams of events, not documents:
 
 ```php
-// Infrastructure/Persistence/MongoDB/MongoUserRepository.php
-final class MongoUserRepository implements UserRepositoryInterface
-{
-    public function __construct(private Collection $collection) {}
+// Infrastructure/Persistence/MongoDB/MongoEventStore.php
+// Stores events in 'events' collection with structure:
+// { aggregate_id, aggregate_type, version, event_type, event_data, occurred_at }
 
-    public function save(User $user): void
-    {
-        $this->collection->replaceOne(
-            ['_id' => $user->id->asString()],
-            $this->toDocument($user),
-            ['upsert' => true]
-        );
-    }
+// Infrastructure/Persistence/MongoDB/MongoUserReadModel.php
+// Read model in 'users' collection, updated by projections
+// { _id: aggregateId, email, registered_at }
+```
 
-    public function ofId(UserId $id): ?User
-    {
-        $doc = $this->collection->findOne(['_id' => $id->asString()]);
-        return $doc ? $this->toEntity($doc) : null;
-    }
+**Collections**:
+- `events` - Event store (unique index on aggregate_id + aggregate_type + version)
+- `users` - Read model projection (unique index on email)
 
-    private function toDocument(User $user): array { /* ... */ }
-    private function toEntity(array $doc): User { /* ... */ }
-}
+**Setup indices** (required for production):
+```bash
+php bin/console app:create-indices
 ```
 
 ## References
