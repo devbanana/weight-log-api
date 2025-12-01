@@ -87,25 +87,25 @@ final class UserContext implements Context
         );
     }
 
-    #[Then('registration should fail')]
-    public function registrationShouldFail(): void
-    {
-        Assert::notNull($this->response, 'No response received');
-        Assert::greaterThanEq(
-            $this->response->getStatusCode(),
-            400,
-            sprintf('Expected error status code (4xx or 5xx), got %d', $this->response->getStatusCode())
-        );
-    }
-
-    #[Then('I should receive a :statusCode response')]
-    public function iShouldReceiveAResponse(int $statusCode): void
+    #[Then('registration should fail due to duplicate email')]
+    public function registrationShouldFailDueToDuplicateEmail(): void
     {
         Assert::notNull($this->response, 'No response received');
         Assert::same(
             $this->response->getStatusCode(),
-            $statusCode,
-            sprintf('Expected %d status code. Response: %s', $statusCode, $this->getResponseContent())
+            409,
+            sprintf('Expected 409 Conflict. Response: %s', $this->getResponseContent())
+        );
+    }
+
+    #[Then('registration should fail due to invalid email format')]
+    public function registrationShouldFailDueToInvalidEmailFormat(): void
+    {
+        Assert::notNull($this->response, 'No response received');
+        Assert::same(
+            $this->response->getStatusCode(),
+            422,
+            sprintf('Expected 422 Unprocessable Entity. Response: %s', $this->getResponseContent())
         );
     }
 

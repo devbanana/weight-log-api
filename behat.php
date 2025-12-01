@@ -13,13 +13,6 @@ use FriendsOfBehat\SymfonyExtension\ServiceContainer\SymfonyExtension;
 return new Config()
     // Default profile: Use case testing (NO Symfony, pure application testing)
     ->withProfile(new Profile('default')
-        ->withSuite(new Suite('usecase')
-            ->withContexts(UserContext::class)
-            ->withPaths('%paths.base%/features')
-            ->withFilter(new TagFilter('~@e2e'))))
-    // E2E profile: Full integration testing (WITH Symfony)
-    // Does NOT inherit default's suites - only runs e2e suite
-    ->withProfile(new Profile('e2e')
         ->withExtension(new Extension(SymfonyExtension::class, [
             'bootstrap' => 'tests/bootstrap.php',
             'kernel' => [
@@ -28,6 +21,10 @@ return new Config()
                 'debug' => true,
             ],
         ]))
+        ->withSuite(new Suite('usecase')
+            ->withContexts(UserContext::class)
+            ->withPaths('%paths.base%/features')
+            ->withFilter(new TagFilter('~@e2e')))
         ->withSuite(new Suite('e2e')
             ->withContexts(App\Tests\E2E\UserContext::class)
             ->withPaths('%paths.base%/features')))

@@ -74,13 +74,23 @@ final class UserContext implements Context
         $this->container->getCommandBus()->dispatch($command);
     }
 
-    #[Then('registration should fail')]
-    public function registrationShouldFail(): void
+    #[Then('registration should fail due to duplicate email')]
+    public function registrationShouldFailDueToDuplicateEmail(): void
     {
         Assert::isInstanceOf(
             $this->caughtException,
             UserAlreadyExistsException::class,
             'Expected UserAlreadyExistsException to be thrown',
+        );
+    }
+
+    #[Then('registration should fail due to invalid email format')]
+    public function registrationShouldFailDueToInvalidEmailFormat(): void
+    {
+        Assert::isInstanceOf(
+            $this->caughtException,
+            \InvalidArgumentException::class,
+            'Expected InvalidArgumentException to be thrown',
         );
     }
 }
