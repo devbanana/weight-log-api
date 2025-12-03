@@ -61,11 +61,4 @@
         </bootstrap>
     </extensions>
 
-    <!-- Enforce 100% coverage for all included classes -->
-    <coverage>
-        <report>
-            <clover outputFile="coverage/clover.xml"/>
-            <html outputDirectory="coverage/html"/>
-        </report>
-    </coverage>
 </phpunit>
