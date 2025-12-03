@@ -11,10 +11,7 @@ use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\User;
 use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
 use App\Tests\UseCase\InMemoryEventStore;
-use MongoDB\BSON\UTCDateTime;
 use MongoDB\Client;
-use MongoDB\Collection;
-use MongoDB\Model\BSONDocument;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
@@ -25,7 +22,10 @@ use Symfony\Component\Serializer\Serializer;
  * Contract tests for EventStore implementations.
  *
  * All implementations of EventStoreInterface must pass these tests
- * to ensure consistent behavior across adapters.
+ * to ensure consistent event sourcing behavior across adapters.
+ *
+ * Implementation-specific behavior (like MongoDB's BSON document structure)
+ * is tested separately in adapter-specific test classes.
  *
  * @covers \App\Infrastructure\Persistence\MongoDB\MongoEventStore
  * @covers \App\Tests\UseCase\InMemoryEventStore
@@ -269,57 +269,7 @@ final class EventStoreContractTest extends TestCase
         yield 'MongoDB' => [self::createMongoEventStore()];
     }
 
-    /**
-     * MongoDB-specific test to verify the raw document structure.
-     * This ensures occurred_at is stored as a proper BSON UTCDateTime.
-     */
-    public function testMongoDocumentContainsValidOccurredAtField(): void
-    {
-        $collection = self::createMongoCollection();
-        $eventStore = self::createMongoEventStoreWithCollection($collection);
-
-        $aggregateId = 'user-occurred-at-test';
-        $specificTime = new \DateTimeImmutable('2025-06-15 14:30:45', new \DateTimeZone('UTC'));
-        $event = new UserRegistered(
-            id: $aggregateId,
-            email: 'document@example.com',
-            hashedPassword: 'hashed_password',
-            occurredAt: $specificTime,
-        );
-
-        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$event], expectedVersion: 0);
-
-        // Query the raw document directly
-        $document = $collection->findOne([
-            'aggregate_id' => $aggregateId,
-            'aggregate_type' => self::AGGREGATE_TYPE,
-        ]);
-
-        self::assertNotNull($document, 'Document should exist in collection');
-        self::assertInstanceOf(BSONDocument::class, $document);
-        self::assertArrayHasKey('occurred_at', $document);
-
-        $occurredAt = $document['occurred_at'];
-        self::assertInstanceOf(
-            UTCDateTime::class,
-            $occurredAt,
-            'occurred_at should be stored as BSON UTCDateTime',
-        );
-
-        // Verify the timestamp value matches
-        $storedDateTime = $occurredAt->toDateTime();
-        self::assertSame(
-            $specificTime->format('Y-m-d H:i:s'),
-            $storedDateTime->format('Y-m-d H:i:s'),
-        );
-    }
-
     private static function createMongoEventStore(): MongoEventStore
-    {
-        return self::createMongoEventStoreWithCollection(self::createMongoCollection());
-    }
-
-    private static function createMongoCollection(): Collection
     {
         $mongoUrl = $_ENV['MONGODB_URL'];
         self::assertIsString($mongoUrl, 'MONGODB_URL must be set in environment for tests');
@@ -330,11 +280,6 @@ final class EventStoreContractTest extends TestCase
         $collection = $client->selectCollection($database, 'events');
         $collection->drop();
 
-        return $collection;
-    }
-
-    private static function createMongoEventStoreWithCollection(Collection $collection): MongoEventStore
-    {
         $serializer = new Serializer([
             new DateTimeNormalizer(),
             new ObjectNormalizer(),
