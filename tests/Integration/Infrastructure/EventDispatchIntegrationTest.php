@@ -69,6 +69,7 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event = new UserRegistered(
             id: $userId,
             email: $email,
+            hashedPassword: 'hashed_password',
             occurredAt: $occurredAt,
         );
 
@@ -100,6 +101,7 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event1 = new UserRegistered(
             id: $userId1,
             email: $email1,
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
         $this->eventStore->append($userId1, User::class, [$event1], expectedVersion: 0);
@@ -108,6 +110,7 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event2 = new UserRegistered(
             id: $userId2,
             email: $email2,
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
         $this->eventStore->append($userId2, User::class, [$event2], expectedVersion: 0);
@@ -128,6 +131,7 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event1 = new UserRegistered(
             id: $userId,
             email: $initialEmail,
+            hashedPassword: 'hashed_password',
             occurredAt: $occurredAt,
         );
 
@@ -137,6 +141,7 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event2 = new UserRegistered(
             id: $userId,
             email: $initialEmail,
+            hashedPassword: 'hashed_password',
             occurredAt: $occurredAt->modify('+1 second'),
         );
 
@@ -160,6 +165,7 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event = new UserRegistered(
             id: $userId,
             email: $email,
+            hashedPassword: 'hashed_password',
             occurredAt: $registeredAt,
         );
 
@@ -186,6 +192,7 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event1 = new UserRegistered(
             id: $userId,
             email: $email,
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
         $this->eventStore->append($userId, User::class, [$event1], expectedVersion: 0);
@@ -197,6 +204,7 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event2 = new UserRegistered(
             id: $userId,
             email: 'updated@example.com',
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
 

@@ -9,6 +9,7 @@ use App\Domain\Common\Aggregate\RecordsEvents;
 use App\Domain\Common\Event\DomainEventInterface;
 use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\ValueObject\Email;
+use App\Domain\User\ValueObject\HashedPassword;
 use App\Domain\User\ValueObject\UserId;
 
 /**
@@ -23,6 +24,7 @@ final class User implements EventSourcedAggregateInterface
 
     private UserId $id;
     private Email $email;
+    private HashedPassword $password;
     private \DateTimeImmutable $registeredAt;
 
     private function __construct()
@@ -36,12 +38,14 @@ final class User implements EventSourcedAggregateInterface
     public static function register(
         UserId $id,
         Email $email,
+        HashedPassword $password,
         \DateTimeImmutable $registeredAt,
     ): self {
         $user = new self();
         $user->recordThat(new UserRegistered(
             $id->asString(),
             $email->asString(),
+            $password->asString(),
             $registeredAt,
         ));
 
@@ -80,6 +84,7 @@ final class User implements EventSourcedAggregateInterface
     {
         $this->id = UserId::fromString($event->id);
         $this->email = Email::fromString($event->email);
+        $this->password = HashedPassword::fromHash($event->hashedPassword);
         $this->registeredAt = $event->occurredAt;
     }
 }

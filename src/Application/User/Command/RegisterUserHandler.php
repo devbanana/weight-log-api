@@ -7,11 +7,13 @@ namespace App\Application\User\Command;
 use App\Application\Clock\ClockInterface;
 use App\Application\MessageBus\CommandHandlerInterface;
 use App\Application\MessageBus\CommandInterface;
+use App\Application\Security\PasswordHasherInterface;
 use App\Domain\Common\EventStore\EventStoreInterface;
 use App\Domain\User\Exception\UserAlreadyExistsException;
 use App\Domain\User\User;
 use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\Email;
+use App\Domain\User\ValueObject\PlainPassword;
 use App\Domain\User\ValueObject\UserId;
 
 /**
@@ -27,6 +29,7 @@ final readonly class RegisterUserHandler implements CommandHandlerInterface
         private EventStoreInterface $eventStore,
         private UserReadModelInterface $userReadModel,
         private ClockInterface $clock,
+        private PasswordHasherInterface $passwordHasher,
     ) {
     }
 
@@ -40,10 +43,13 @@ final readonly class RegisterUserHandler implements CommandHandlerInterface
         }
 
         $userId = UserId::fromString($command->userId);
+        $plainPassword = PlainPassword::fromString($command->password);
+        $hashedPassword = $this->passwordHasher->hash($plainPassword);
 
         $user = User::register(
             $userId,
             $email,
+            $hashedPassword,
             $this->clock->now(),
         );
 

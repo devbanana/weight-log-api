@@ -44,10 +44,10 @@ final class UserContext implements Context
         $this->database->dropCollection('users');
     }
 
-    #[Given('a user exists with email :email')]
-    public function aUserExistsWithEmail(string $email): void
+    #[Given('a user exists with email :email and password :password')]
+    public function aUserExistsWithEmailAndPassword(string $email, string $password): void
     {
-        $this->iRegisterWithEmail($email);
+        $this->iRegisterWithEmailAndPassword($email, $password);
 
         Assert::same(
             $this->response?->getStatusCode(),
@@ -58,8 +58,8 @@ final class UserContext implements Context
         $this->response = null;
     }
 
-    #[When('I register with email :email')]
-    public function iRegisterWithEmail(string $email): void
+    #[When('I register with email :email and password :password')]
+    public function iRegisterWithEmailAndPassword(string $email, string $password): void
     {
         $request = Request::create(
             uri: '/api/auth/register',
@@ -70,6 +70,7 @@ final class UserContext implements Context
             ],
             content: json_encode([
                 'email' => $email,
+                'password' => $password,
             ], JSON_THROW_ON_ERROR)
         );
 
@@ -100,6 +101,17 @@ final class UserContext implements Context
 
     #[Then('registration should fail due to invalid email format')]
     public function registrationShouldFailDueToInvalidEmailFormat(): void
+    {
+        Assert::notNull($this->response, 'No response received');
+        Assert::same(
+            $this->response->getStatusCode(),
+            422,
+            sprintf('Expected 422 Unprocessable Entity. Response: %s', $this->getResponseContent())
+        );
+    }
+
+    #[Then('registration should fail due to invalid password')]
+    public function registrationShouldFailDueToInvalidPassword(): void
     {
         Assert::notNull($this->response, 'No response received');
         Assert::same(

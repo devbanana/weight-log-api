@@ -31,8 +31,8 @@ final class UserContext implements Context
         $this->container = new TestContainer();
     }
 
-    #[When('I register with email :email')]
-    public function iRegisterWithEmail(string $email): void
+    #[When('I register with email :email and password :password')]
+    public function iRegisterWithEmailAndPassword(string $email, string $password): void
     {
         // Generate client-side UUID (v7 is time-ordered, better for databases)
         $this->registeredUserId = Uuid::v7()->toString();
@@ -40,6 +40,7 @@ final class UserContext implements Context
         $command = new RegisterUserCommand(
             userId: $this->registeredUserId,
             email: $email,
+            password: $password,
         );
 
         try {
@@ -63,12 +64,13 @@ final class UserContext implements Context
         User::reconstitute($events);
     }
 
-    #[Given('a user exists with email :email')]
-    public function aUserExistsWithEmail(string $email): void
+    #[Given('a user exists with email :email and password :password')]
+    public function aUserExistsWithEmailAndPassword(string $email, string $password): void
     {
         $command = new RegisterUserCommand(
             userId: Uuid::v7()->toString(),
             email: $email,
+            password: $password,
         );
 
         $this->container->getCommandBus()->dispatch($command);
@@ -91,6 +93,16 @@ final class UserContext implements Context
             $this->caughtException,
             \InvalidArgumentException::class,
             'Expected InvalidArgumentException to be thrown',
+        );
+    }
+
+    #[Then('registration should fail due to invalid password')]
+    public function registrationShouldFailDueToInvalidPassword(): void
+    {
+        Assert::isInstanceOf(
+            $this->caughtException,
+            \InvalidArgumentException::class,
+            'Expected InvalidArgumentException for invalid password',
         );
     }
 }

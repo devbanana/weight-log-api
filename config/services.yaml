@@ -83,6 +83,10 @@ services:
     App\Application\MessageBus\CommandBusInterface:
         alias: App\Infrastructure\MessageBus\MessengerCommandBus
 
+    # Password Hasher
+    App\Application\Security\PasswordHasherInterface:
+        alias: App\Infrastructure\Security\NativePasswordHasher
+
 when@test:
     services:
         # Make services public for testing

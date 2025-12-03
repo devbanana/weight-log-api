@@ -37,6 +37,9 @@ final class UserRegistrationResource
         #[Assert\NotBlank]
         #[Assert\Email]
         public readonly string $email,
+        #[Assert\NotBlank]
+        #[Assert\Length(min: 8, minMessage: 'Password must be at least {{ limit }} characters long')]
+        public readonly string $password,
     ) {
     }
 }

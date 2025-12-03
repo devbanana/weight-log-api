@@ -19,11 +19,15 @@ final class TestContainer
     private InMemoryUserReadModel $userReadModel;
     private InMemoryCommandBus $commandBus;
     private FrozenClock $clock;
+    private FakePasswordHasher $passwordHasher;
 
     public function __construct()
     {
         // Create clock (frozen for deterministic tests)
         $this->clock = new FrozenClock();
+
+        // Create password hasher (uses real bcrypt with low cost)
+        $this->passwordHasher = new FakePasswordHasher();
 
         // Create read model (projection)
         $this->userReadModel = new InMemoryUserReadModel();
@@ -36,7 +40,12 @@ final class TestContainer
         $this->commandBus = new InMemoryCommandBus();
         $this->commandBus->register(
             RegisterUserCommand::class,
-            new RegisterUserHandler($this->eventStore, $this->userReadModel, $this->clock),
+            new RegisterUserHandler(
+                $this->eventStore,
+                $this->userReadModel,
+                $this->clock,
+                $this->passwordHasher,
+            ),
         );
     }
 

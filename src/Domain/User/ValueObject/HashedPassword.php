@@ -23,4 +23,9 @@ final readonly class HashedPassword
     {
         return password_verify($plainPassword->asString(), $this->hash);
     }
+
+    public function asString(): string
+    {
+        return $this->hash;
+    }
 }

@@ -58,8 +58,9 @@ final class RegisterUserEndpointTest extends WebTestCase
                 // Verify command has valid UUID
                 self::assertTrue(Uuid::isValid($command->userId), 'userId should be a valid UUID');
 
-                // Verify command has correct email
+                // Verify command has correct email and password
                 self::assertSame('test@example.com', $command->email);
+                self::assertSame('SecurePass123!', $command->password);
 
                 return true;
             }))
@@ -70,6 +71,7 @@ final class RegisterUserEndpointTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
             'email' => 'test@example.com',
+            'password' => 'SecurePass123!',
         ], JSON_THROW_ON_ERROR));
 
         // Assert: Returns 201 Created
@@ -96,6 +98,7 @@ final class RegisterUserEndpointTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
             'email' => 'user@example.com',
+            'password' => 'SecurePass123!',
         ], JSON_THROW_ON_ERROR));
 
         // Assert: User ID is a valid UUID v7
@@ -124,6 +127,7 @@ final class RegisterUserEndpointTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
             'email' => 'TEST@EXAMPLE.COM',
+            'password' => 'SecurePass123!',
         ], JSON_THROW_ON_ERROR));
 
         // Assert: Returns 201 Created (normalization happens in domain layer)
@@ -143,6 +147,7 @@ final class RegisterUserEndpointTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
             'email' => 'not-an-email',
+            'password' => 'SecurePass123!',
         ], JSON_THROW_ON_ERROR));
 
         // Assert: Returns 422 Unprocessable Entity
@@ -177,6 +182,7 @@ final class RegisterUserEndpointTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
             'email' => '',
+            'password' => 'SecurePass123!',
         ], JSON_THROW_ON_ERROR));
 
         // Assert: Returns 422 Unprocessable Entity
@@ -196,12 +202,69 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->client->request('POST', '/api/auth/register', [], [], [
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
-            // No email field
+            'password' => 'SecurePass123!',
         ], JSON_THROW_ON_ERROR));
 
         // Assert: Returns 400 Bad Request (API Platform deserialization error)
         self::assertResponseStatusCodeSame(400);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
+    }
+
+    public function testItReturns400ForMissingPassword(): void
+    {
+        // Arrange: Command bus should never be called for invalid input
+        $this->commandBus
+            ->expects(self::never())
+            ->method('dispatch')
+        ;
+
+        // Act: POST with no password field
+        $this->client->request('POST', '/api/auth/register', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'email' => 'test@example.com',
+        ], JSON_THROW_ON_ERROR));
+
+        // Assert: Returns 400 Bad Request (API Platform deserialization error)
+        self::assertResponseStatusCodeSame(400);
+        self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
+    }
+
+    public function testItReturns422ForPasswordTooShort(): void
+    {
+        // Arrange: Command bus should never be called for invalid input
+        $this->commandBus
+            ->expects(self::never())
+            ->method('dispatch')
+        ;
+
+        // Act: POST with password that's too short
+        $this->client->request('POST', '/api/auth/register', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'email' => 'test@example.com',
+            'password' => 'short',
+        ], JSON_THROW_ON_ERROR));
+
+        // Assert: Returns 422 Unprocessable Entity
+        self::assertResponseStatusCodeSame(422);
+        self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
+
+        $content = $this->client->getResponse()->getContent();
+        self::assertNotFalse($content);
+
+        $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        assert(is_array($data));
+
+        self::assertArrayHasKey('violations', $data);
+        $violations = $data['violations'];
+        assert(is_array($violations));
+        self::assertCount(1, $violations);
+        assert(is_array($violations[0]));
+        self::assertArrayHasKey('propertyPath', $violations[0]);
+        self::assertSame('password', $violations[0]['propertyPath']);
+        self::assertArrayHasKey('message', $violations[0]);
+        self::assertSame('Password must be at least 8 characters long', $violations[0]['message']);
     }
 
     public function testItReturns409WhenUserAlreadyExists(): void
@@ -220,6 +283,7 @@ final class RegisterUserEndpointTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
             'email' => 'duplicate@example.com',
+            'password' => 'SecurePass123!',
         ], JSON_THROW_ON_ERROR));
 
         // Assert: Returns 409 Conflict

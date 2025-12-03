@@ -49,4 +49,12 @@ final class HashedPasswordTest extends TestCase
 
         yield 'unicode password' => ['Pässwörd123!', 'Pässwörd123!', true];
     }
+
+    public function testItReturnsHashAsString(): void
+    {
+        $hash = password_hash('TestPassword123!', PASSWORD_BCRYPT);
+        $hashedPassword = HashedPassword::fromHash($hash);
+
+        self::assertSame($hash, $hashedPassword->asString());
+    }
 }

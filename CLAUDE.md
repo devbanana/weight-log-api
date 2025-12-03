@@ -66,6 +66,7 @@ Following Matthias Noback's guidance from "Advanced Web Application Architecture
 ### 1. Rich Domain Models (Not Anemic!)
 
 ❌ **WRONG (Anemic Model)**:
+
 ```php
 class User
 {
@@ -77,6 +78,7 @@ class User
 ```
 
 ✅ **CORRECT (Rich Model)**:
+
 ```php
 class User
 {
@@ -205,11 +207,13 @@ final readonly class UserRegistered implements DomainEventInterface
 ```
 
 **Key Rules**:
+
 - **Domain**: Pure PHP only. All validation in value object constructors. Business logic in aggregate methods. Port interfaces defined here, implemented in Infrastructure.
 - **Application**: Depends on Domain only. Handlers are thin orchestration. DTOs use primitives (no domain objects).
 - **Infrastructure**: Implements Domain interfaces. Never leak framework types to inner layers.
 
 **Read Model Method Naming**:
+
 - `getByX(...)`: Returns data or throws exception
 - `findByX(...)`: Returns data or null
 - `existsWithX(...)`: Returns boolean
@@ -304,6 +308,7 @@ Infrastructure/Persistence/MongoDB/MongoUserReadModel.php
 - ✅ **Keep implementations minimal** - Start with empty/spy implementations
 
 **Example workflow**:
+
 1. Run test → See error about missing class
 2. Create minimal class → Run test again
 3. See error about missing method → Add minimal method
@@ -322,9 +327,10 @@ This principle is the conjunction of BDD and TDD. It means:
 
 2. **Behavior must be tested** - If behavior exists, there must be a test that verifies it. The test is what justifies the behavior's existence.
 
-3. **Tests pull implementation** - Don't add fields, parameters, or properties speculatively. Wait until a failing test *requires* them.
+3. **Tests pull implementation** - Don't add fields, parameters, or properties speculatively. Wait until a failing test _requires_ them.
 
 **Example**: A `User` aggregate shouldn't store `email`, `dateOfBirth`, or `password` until:
+
 - `email` → A test requires checking email uniqueness or displaying it
 - `dateOfBirth` → A test requires age verification (e.g., "must be 18+")
 - `password` → A test requires login/authentication
@@ -390,6 +396,7 @@ $this->commandBus->dispatch($command);
 ```
 
 **Why generate early?**
+
 - The processor can return the ID immediately in the response
 - The ID is available for any follow-up operations
 - Commands are fully self-contained (no out-parameters)
@@ -406,6 +413,7 @@ Following Chapter 14 of "Advanced Web Application Architecture", we use **four t
 **Test Naming Convention**: All test methods must use **camelCase** naming (e.g., `testItCreatesEmailFromValidString()`) for better accessibility with screen readers. Do not use snake_case (e.g., `test_it_creates_email_from_valid_string()`).
 
 #### 1. Unit Tests (PHPUnit)
+
 **What**: Test domain objects (aggregates, value objects) in isolation
 **Where**: `tests/Unit/Domain/`
 **Tools**: PHPUnit
@@ -425,6 +433,7 @@ final class EmailTest extends TestCase
 ```
 
 #### 2. Use Case Tests (Behat)
+
 **What**: Test application core (commands/queries) with business language
 **Where**: `features/*.feature`
 **Tools**: Behat with TestContainer and spy objects
@@ -477,6 +486,7 @@ final class UserContext implements Context
 ```
 
 #### 3. Adapter Tests (PHPUnit)
+
 **What**: Test infrastructure adapters (API processors, repositories, external clients)
 **Where**: `tests/Integration/Infrastructure/`
 **Tools**: PHPUnit with real infrastructure
@@ -490,6 +500,7 @@ final class UserContext implements Context
 Contract tests verify that **all implementations of a port interface behave identically**. Use a data provider to test both the in-memory test double and the real infrastructure adapter with the same test cases.
 
 **Pattern:**
+
 ```php
 // tests/Integration/Infrastructure/Persistence/EventStoreContractTest.php
 final class EventStoreContractTest extends TestCase
@@ -517,12 +528,14 @@ final class EventStoreContractTest extends TestCase
 ```
 
 **Why this pattern matters:**
+
 1. ✅ **In-memory validates test correctness** - If tests pass with in-memory but fail with real adapter, the adapter has a bug
 2. ✅ **Ensures test doubles are accurate** - The fake used in Behat use case tests behaves like the real thing
 3. ✅ **Single source of truth** - Contract is defined once, all implementations must conform
 4. ✅ **Catches behavioral differences** - Subtle differences (e.g., bcrypt limits, case sensitivity) are caught early
 
 **Existing contract tests:**
+
 - `EventStoreContractTest` - Tests `InMemoryEventStore` and `MongoEventStore`
 - `UserReadModelContractTest` - Tests `InMemoryUserReadModel` and `MongoUserReadModel`
 - `PasswordHasherContractTest` - Tests `FakePasswordHasher` and `NativePasswordHasher`
@@ -573,12 +586,14 @@ final class RegisterUserEndpointTest extends WebTestCase
 ```
 
 **Key points for driving tests:**
+
 - Mock the `CommandBusInterface` to verify the processor dispatches the correct command
 - Test HTTP → Command transformation (correct fields mapped, UUID generated)
 - Test error handling (domain exceptions → HTTP status codes)
 - Do NOT test business logic here (that's covered by use case tests)
 
 #### 4. End-to-End Tests (Behat + Real Infrastructure)
+
 **What**: Test complete system as black box with real HTTP, database, etc.
 **Where**: Same `features/*.feature` files, different suite
 **Tools**: Behat with real Symfony kernel, web server
@@ -610,31 +625,63 @@ final class UserContext implements Context
 
 ```bash
 # Unit tests (fast - run constantly)
-vendor/bin/phpunit tests/Unit
+composer test:unit
 
 # Use case tests (fast - run frequently)
-vendor/bin/behat --suite=usecase
+composer test:usecase
 
-# Adapter tests (slower - run before commit)
-vendor/bin/phpunit --testsuite=integration
+# Adapter/integration tests (slower - run before commit)
+composer test:integration
 
 # End-to-end tests (slow - run before deploy)
-vendor/bin/behat --suite=e2e
+composer test:e2e
+
+# All PHPUnit tests
+composer test
+
+# All Behat tests
+composer test:behat
 
 # All tests (PHPUnit + Behat)
-composer test && vendor/bin/behat
+composer test:all
+
+# Test with coverage enforcement (fails if not 100%)
+composer test:coverage
 
 # Static analysis (must pass level max)
 composer analyze
 
 # Code formatting
-vendor/bin/php-cs-fixer fix
+composer fix:cs
 
 # Architecture boundaries
-vendor/bin/deptrac analyse --report-uncovered
+composer deptrac
 ```
 
 **Note on handler testing**: Command/Query handlers are thin orchestration code. They are tested via Behat use case tests, not PHPUnit. They are excluded from PHPUnit coverage reports.
+
+### Coverage Policy: 100% for Included Classes
+
+All classes included in PHPUnit coverage must have **100% test coverage**. This is enforced automatically - the build fails if coverage drops below 100%.
+
+**The rule is simple:**
+
+- If a class should be tested → it must have 100% coverage
+- If a class shouldn't be tested → add it to the exclusion list in `phpunit.dist.xml`
+
+**Currently excluded from coverage** (with rationale):
+
+- `src/Application/*/Command/` - Command DTOs and handlers (tested via Behat)
+- `src/Application/*/Query/` - Query DTOs and handlers (tested via Behat)
+- `src/Domain/*/Event/` - Event DTOs (simple data carriers)
+- `src/Domain/*/Exception/` - Exception classes (trivial logic)
+
+**When to exclude vs. test:**
+
+- **Exclude**: Pure DTOs, simple delegating adapters with no logic, framework boilerplate
+- **Test**: Any class with conditional logic, validation, transformation, or business rules
+
+**Adding a new exclusion**: If a class genuinely shouldn't be tested, add it to `phpunit.dist.xml` and document the rationale in a comment. This makes exclusions intentional and reviewable.
 
 ## Development Workflow (TDD with Behat)
 
@@ -847,6 +894,7 @@ final readonly class UserProjection
 ```
 
 **Key points**:
+
 - Projections are message handlers on `event.bus`
 - Use `upsert: true` so replaying events doesn't cause duplicates
 - Use `$set` to update specific fields, making projections idempotent
@@ -925,10 +973,12 @@ We use **event sourcing** - aggregates are persisted as streams of events, not d
 ```
 
 **Collections**:
+
 - `events` - Event store (unique index on aggregate_id + aggregate_type + version)
 - `users` - Read model projection (unique index on email)
 
 **Setup indices** (required for production):
+
 ```bash
 php bin/console app:create-indices
 ```

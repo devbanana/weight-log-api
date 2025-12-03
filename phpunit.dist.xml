@@ -23,7 +23,7 @@
             <directory>tests/Unit</directory>
         </testsuite>
 
-        <!-- Integration tests: Test adapters (repositories, API Platform resources, etc.) -->
+        <!-- Integration tests: Test adapters (projections, read models, API Platform resources, etc.) -->
         <testsuite name="integration">
             <directory>tests/Integration</directory>
         </testsuite>
@@ -43,6 +43,7 @@
         <exclude>
             <directory>src/Application/*/Command</directory>
             <directory>src/Application/*/Query</directory>
+            <directory>src/Domain/*/Event</directory>
             <directory>src/Domain/*/Exception</directory>
         </exclude>
 
@@ -59,4 +60,12 @@
             <parameter name="dns-mock-namespaces" value="App" />
         </bootstrap>
     </extensions>
+
+    <!-- Enforce 100% coverage for all included classes -->
+    <coverage>
+        <report>
+            <clover outputFile="coverage/clover.xml"/>
+            <html outputDirectory="coverage/html"/>
+        </report>
+    </coverage>
 </phpunit>

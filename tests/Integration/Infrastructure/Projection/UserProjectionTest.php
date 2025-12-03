@@ -51,6 +51,7 @@ final class UserProjectionTest extends TestCase
         $event = new UserRegistered(
             id: 'user-123',
             email: 'john@example.com',
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable('2025-01-15T10:30:00+00:00'),
         );
 
@@ -65,6 +66,7 @@ final class UserProjectionTest extends TestCase
         $event = new UserRegistered(
             id: 'user-456',
             email: 'john.doe@example.com', // Already normalized by domain
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
 
@@ -78,6 +80,7 @@ final class UserProjectionTest extends TestCase
         $event = new UserRegistered(
             id: 'user-789',
             email: 'jane@example.com',
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
 
@@ -94,6 +97,7 @@ final class UserProjectionTest extends TestCase
         $event = new UserRegistered(
             id: 'user-idempotent',
             email: 'idempotent@example.com',
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
 
@@ -111,18 +115,21 @@ final class UserProjectionTest extends TestCase
         $this->projection->onUserRegistered(new UserRegistered(
             id: 'user-1',
             email: 'first@example.com',
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         ));
 
         $this->projection->onUserRegistered(new UserRegistered(
             id: 'user-2',
             email: 'second@example.com',
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         ));
 
         $this->projection->onUserRegistered(new UserRegistered(
             id: 'user-3',
             email: 'third@example.com',
+            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         ));
 
@@ -138,6 +145,7 @@ final class UserProjectionTest extends TestCase
         $event = new UserRegistered(
             id: 'user-timestamp',
             email: 'timestamp@example.com',
+            hashedPassword: 'hashed_password',
             occurredAt: $registeredAt,
         );
 
@@ -155,5 +163,23 @@ final class UserProjectionTest extends TestCase
             $registeredAt->format('Y-m-d H:i:s'),
             $storedDate->toDateTime()->format('Y-m-d H:i:s'),
         );
+    }
+
+    public function testItStoresHashedPassword(): void
+    {
+        $event = new UserRegistered(
+            id: 'user-password-test',
+            email: 'password-test@example.com',
+            hashedPassword: '$2y$10$abcdefghijklmnopqrstuv',
+            occurredAt: new \DateTimeImmutable(),
+        );
+
+        $this->projection->onUserRegistered($event);
+
+        $document = $this->collection->findOne(['_id' => 'user-password-test']);
+        self::assertNotNull($document);
+        assert(is_array($document) || $document instanceof \ArrayAccess);
+        self::assertArrayHasKey('hashed_password', (array) $document);
+        self::assertSame('$2y$10$abcdefghijklmnopqrstuv', $document['hashed_password']);
     }
 }

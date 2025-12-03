@@ -73,9 +73,16 @@
             "@auto-scripts"
         ],
         "analyze": "vendor/bin/phpstan analyse --memory-limit=1G",
-        "deptrac": "vendor/bin/deptrac analyse",
+        "deptrac": "vendor/bin/deptrac analyse --report-uncovered",
         "fix:cs": "vendor/bin/php-cs-fixer fix --diff",
-        "test": "vendor/bin/phpunit"
+        "test": "vendor/bin/phpunit",
+        "test:unit": "vendor/bin/phpunit --testsuite=unit",
+        "test:integration": "vendor/bin/phpunit --testsuite=integration",
+        "test:coverage": "vendor/bin/phpunit --coverage-text | tee /dev/stderr | grep -q 'Classes: 100.00%' || (echo '\\n❌ Coverage must be 100% for all included classes' && exit 1)",
+        "test:usecase": "vendor/bin/behat --suite=usecase",
+        "test:e2e": "vendor/bin/behat --suite=e2e",
+        "test:behat": "vendor/bin/behat",
+        "test:all": "composer test && composer test:behat"
     },
     "conflict": {
         "symfony/symfony": "*"

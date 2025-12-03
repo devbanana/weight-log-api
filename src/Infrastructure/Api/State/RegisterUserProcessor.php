@@ -37,6 +37,7 @@ final readonly class RegisterUserProcessor implements ProcessorInterface
         $command = new RegisterUserCommand(
             userId: Uuid::v7()->toRfc4122(),
             email: $data->email,
+            password: $data->password,
         );
 
         try {
