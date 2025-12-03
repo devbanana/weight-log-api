@@ -254,8 +254,8 @@ src/
 features/                   # Behat feature files (Gherkin scenarios)
 
 tests/
-├── Unit/                   # PHPUnit: Domain objects in isolation
-├── Integration/            # PHPUnit: Adapter contract + driving tests
+├── Unit/                   # PHPUnit: Classes in isolation (mocked dependencies)
+├── Integration/            # PHPUnit: Adapter contract + driving tests (real infra)
 ├── UseCase/                # Behat context + test doubles (in-memory adapters)
 └── E2E/                    # Behat context (real infrastructure)
 
@@ -414,11 +414,15 @@ Following Chapter 14 of "Advanced Web Application Architecture", we use **four t
 
 #### 1. Unit Tests (PHPUnit)
 
-**What**: Test domain objects (aggregates, value objects) in isolation
-**Where**: `tests/Unit/Domain/`
+**What**: Test classes in isolation with mocked dependencies
+**Where**: `tests/Unit/`
 **Tools**: PHPUnit
 **Speed**: Lightning fast (milliseconds)
-**Coverage**: Domain invariants, business rules, edge cases
+**Coverage**: Domain invariants, business rules, adapter-specific logic
+
+Unit tests include:
+- **Domain objects** (`tests/Unit/Domain/`) - Value objects, aggregates, domain services
+- **Infrastructure adapters** (`tests/Unit/Infrastructure/`) - When testing adapter-specific logic with mocked dependencies (e.g., `MessengerCommandBusTest` mocks `MessageBusInterface` to test exception unwrapping)
 
 ```php
 // tests/Unit/Domain/User/EmailTest.php
@@ -539,6 +543,31 @@ final class EventStoreContractTest extends TestCase
 - `EventStoreContractTest` - Tests `InMemoryEventStore` and `MongoEventStore`
 - `UserReadModelContractTest` - Tests `InMemoryUserReadModel` and `MongoUserReadModel`
 - `PasswordHasherContractTest` - Tests `FakePasswordHasher` and `NativePasswordHasher`
+- `ClockContractTest` - Tests `FrozenClock` and `SystemClock`
+
+**When contract tests are appropriate:**
+
+Contract tests work well when:
+- The interface has **observable outputs** (return values, state changes) to verify
+- Both implementations can be **instantiated and configured similarly** in tests
+- You're testing a **port adapter** (EventStore, ReadModel, PasswordHasher, Clock)
+
+**When contract tests are NOT appropriate:**
+
+Don't create contract tests for message buses (CommandBus, QueryBus) because:
+- `InMemoryCommandBus` has a `register()` method for runtime handler registration (test-specific)
+- Real `MessengerCommandBus` uses Symfony's container configuration (can't register handlers at test time)
+- You'd only be testing the test double, not production code
+
+For message bus adapters, use **unit tests** with mocks to test adapter-specific behavior (e.g., exception unwrapping).
+
+**Implementation-specific tests:**
+
+Tests for implementation details (not interface contracts) should be in separate files:
+- `MongoEventStoreTest` - Tests MongoDB-specific behavior (BSON document structure)
+- `MessengerCommandBusTest` - Tests Messenger-specific behavior (exception unwrapping)
+
+Naming convention: `*ContractTest` = interface behavior, `Mongo*Test`/`Messenger*Test` = implementation details.
 
 **B. Driving Tests** (for incoming port adapters like API Platform processors):
 
