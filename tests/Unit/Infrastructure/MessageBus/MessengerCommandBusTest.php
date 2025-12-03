@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Integration\Infrastructure\MessageBus;
+namespace App\Tests\Unit\Infrastructure\MessageBus;
 
 use App\Application\MessageBus\CommandInterface;
 use App\Infrastructure\MessageBus\MessengerCommandBus;
@@ -13,7 +13,7 @@ use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * Integration tests for MessengerCommandBus adapter.
+ * Unit tests for MessengerCommandBus adapter.
  *
  * Tests the exception unwrapping logic that extracts domain exceptions
  * from Symfony Messenger's HandlerFailedException wrapper.
