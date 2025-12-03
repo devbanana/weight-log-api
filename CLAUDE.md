@@ -421,6 +421,7 @@ Following Chapter 14 of "Advanced Web Application Architecture", we use **four t
 **Coverage**: Domain invariants, business rules, adapter-specific logic
 
 Unit tests include:
+
 - **Domain objects** (`tests/Unit/Domain/`) - Value objects, aggregates, domain services
 - **Infrastructure adapters** (`tests/Unit/Infrastructure/`) - When testing adapter-specific logic with mocked dependencies (e.g., `MessengerCommandBusTest` mocks `MessageBusInterface` to test exception unwrapping)
 
@@ -545,25 +546,10 @@ final class EventStoreContractTest extends TestCase
 - `PasswordHasherContractTest` - Tests `FakePasswordHasher` and `NativePasswordHasher`
 - `ClockContractTest` - Tests `FrozenClock` and `SystemClock`
 
-**When contract tests are appropriate:**
-
-Contract tests work well when:
-- The interface has **observable outputs** (return values, state changes) to verify
-- Both implementations can be **instantiated and configured similarly** in tests
-- You're testing a **port adapter** (EventStore, ReadModel, PasswordHasher, Clock)
-
-**When contract tests are NOT appropriate:**
-
-Don't create contract tests for message buses (CommandBus, QueryBus) because:
-- `InMemoryCommandBus` has a `register()` method for runtime handler registration (test-specific)
-- Real `MessengerCommandBus` uses Symfony's container configuration (can't register handlers at test time)
-- You'd only be testing the test double, not production code
-
-For message bus adapters, use **unit tests** with mocks to test adapter-specific behavior (e.g., exception unwrapping).
-
 **Implementation-specific tests:**
 
 Tests for implementation details (not interface contracts) should be in separate files:
+
 - `MongoEventStoreTest` - Tests MongoDB-specific behavior (BSON document structure)
 - `MessengerCommandBusTest` - Tests Messenger-specific behavior (exception unwrapping)
 
@@ -722,7 +708,7 @@ Following Noback's top-down approach from Section 14.7, with **tests written BEF
 ┌─────────────────────────────────────────────────────────────────────┐
 │  1. BEHAT SCENARIO (RED)                                            │
 │     Write Gherkin scenario describing the feature                   │
-│     Run: vendor/bin/behat --suite=usecase → FAILS                   │
+│     Run: composer test:usecase → FAILS                   │
 └─────────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -730,7 +716,7 @@ Following Noback's top-down approach from Section 14.7, with **tests written BEF
 │     a) Write PHPUnit unit tests for domain objects (RED)            │
 │     b) Implement domain objects → Unit tests GREEN                  │
 │     c) Wire up TestContainer with in-memory adapters                │
-│     d) Run: vendor/bin/behat --suite=usecase → GREEN                │
+│     d) Run: composer test:usecase → GREEN                           │
 └─────────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -739,13 +725,13 @@ Following Noback's top-down approach from Section 14.7, with **tests written BEF
 │        - Contract tests for event stores/read models                │
 │        - Driving tests for API endpoints                            │
 │     b) Implement infrastructure adapters → Integration tests GREEN  │
-│     c) Run: vendor/bin/behat --suite=e2e → GREEN                    │
+│     c) Run: composer test:e2e → GREEN                               │
 └─────────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────────┐
 │  4. SLICE COMPLETE                                                  │
 │     All tests pass: Unit, UseCase, Integration, E2E                 │
-│     Run: composer test && vendor/bin/behat && composer analyze      │
+│     Run: composer test:all && composer analyze                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -771,12 +757,29 @@ Following Noback's top-down approach from Section 14.7, with **tests written BEF
 1. **Write Gherkin scenario** → Describes feature in business language
 2. **Create step definitions** → Wire to TestContainer (see Use Case Tests in Testing Strategy)
 3. **Drop to Domain** → Write unit tests FIRST, then implement domain objects
-4. **Wire TestContainer** → Run `vendor/bin/behat --suite=usecase` until GREEN
+4. **Wire TestContainer** → Run `composer test:usecase` until GREEN
 5. **Go up to Infrastructure** → Write contract tests and driving tests FIRST (see Adapter Tests in Testing Strategy)
-6. **Implement adapters** → Run `vendor/bin/behat --suite=e2e` until GREEN
+6. **Implement adapters** → Run `composer test:e2e` until GREEN
 7. **Verify slice complete** → All tests pass, static analysis clean
 
 **Key principle**: All domain objects should have unit tests before moving to infrastructure.
+
+### Adding Methods to Port Interfaces
+
+When a feature requires adding a new method to a port interface (e.g., `UserReadModelInterface`):
+
+1. **Add the method to the interface** (Domain layer)
+2. **Implement ONLY in the in-memory test double** (e.g., `InMemoryUserReadModel`)
+3. **Verify UseCase tests pass** → `composer test:usecase`
+4. **STOP HERE** if only working on UseCase layer
+
+Only after UseCase tests are GREEN, move to Infrastructure:
+
+5. **Add contract tests** for the new method
+6. **Implement in real adapter** (e.g., `MongoUserReadModel`)
+7. **Verify contract tests pass** → All implementations behave identically
+
+This ensures you don't prematurely implement infrastructure code before the application layer is working.
 
 ## Common Patterns
 
