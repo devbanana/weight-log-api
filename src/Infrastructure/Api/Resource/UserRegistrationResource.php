@@ -31,15 +31,15 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
     ],
 )]
-final class UserRegistrationResource
+final readonly class UserRegistrationResource
 {
     public function __construct(
         #[Assert\NotBlank]
         #[Assert\Email]
-        public readonly string $email,
+        public string $email,
         #[Assert\NotBlank]
         #[Assert\Length(min: 8, minMessage: 'Password must be at least {{ limit }} characters long')]
-        public readonly string $password,
+        public string $password,
     ) {
     }
 }

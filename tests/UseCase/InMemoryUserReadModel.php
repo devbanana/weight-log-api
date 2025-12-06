@@ -20,9 +20,9 @@ use App\Domain\User\ValueObject\Email;
 final class InMemoryUserReadModel implements UserReadModelInterface
 {
     /**
-     * @var array<string, true>
+     * @var array<string, non-empty-string> email => userId
      */
-    private array $emailIndex = [];
+    private array $emailToUserId = [];
 
     /**
      * Handle a domain event to update the projection.
@@ -39,12 +39,18 @@ final class InMemoryUserReadModel implements UserReadModelInterface
     #[\Override]
     public function existsWithEmail(Email $email): bool
     {
-        return isset($this->emailIndex[$email->asString()]);
+        return isset($this->emailToUserId[$email->asString()]);
+    }
+
+    #[\Override]
+    public function findUserIdByEmail(Email $email): ?string
+    {
+        return $this->emailToUserId[$email->asString()] ?? null;
     }
 
     private function applyUserRegistered(UserRegistered $event): void
     {
-        // Normalize email to lowercase for case-insensitive matching
-        $this->emailIndex[strtolower($event->email)] = true;
+        assert($event->id !== '');
+        $this->emailToUserId[$event->email] = $event->id;
     }
 }

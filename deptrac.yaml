@@ -54,6 +54,14 @@ deptrac:
       collectors:
         - type: classLike
           value: ApiPlatform\\.*
+    - name: LexikJWT
+      collectors:
+        - type: classLike
+          value: Lexik\\Bundle\\JWTAuthenticationBundle\\.*
+    - name: SymfonySecurity
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\Security\\.*
 
   ruleset:
     Domain:
@@ -71,3 +79,5 @@ deptrac:
       - SymfonyHttpKernel
       - SymfonyConsole
       - ApiPlatform
+      - LexikJWT
+      - SymfonySecurity

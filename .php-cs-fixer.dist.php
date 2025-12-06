@@ -8,6 +8,7 @@ use PhpCsFixer\Finder;
 $finder = new Finder()
     ->in(__DIR__)
     ->exclude('var')
+    ->exclude('config/secrets')
     ->ignoreDotFiles(false)
 ;
 

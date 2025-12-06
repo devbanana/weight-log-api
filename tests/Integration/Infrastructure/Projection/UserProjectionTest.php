@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Infrastructure\Projection;
 
+use App\Domain\User\Event\UserLoggedIn;
 use App\Domain\User\Event\UserRegistered;
-use App\Domain\User\ValueObject\Email;
-use App\Infrastructure\Persistence\MongoDB\MongoUserReadModel;
 use App\Infrastructure\Projection\UserProjection;
 use MongoDB\BSON\UTCDateTime;
 use MongoDB\Client;
 use MongoDB\Collection;
-use MongoDB\Model\BSONDocument;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -26,9 +24,10 @@ use PHPUnit\Framework\TestCase;
  */
 final class UserProjectionTest extends TestCase
 {
+    use MongoHelper;
+
     private Collection $collection;
     private UserProjection $projection;
-    private MongoUserReadModel $readModel;
 
     #[\Override]
     protected function setUp(): void
@@ -43,7 +42,6 @@ final class UserProjectionTest extends TestCase
         $this->collection->drop();
 
         $this->projection = new UserProjection($this->collection);
-        $this->readModel = new MongoUserReadModel($this->collection);
     }
 
     public function testItProjectsUserRegisteredEventToReadModel(): void
@@ -55,44 +53,32 @@ final class UserProjectionTest extends TestCase
             occurredAt: new \DateTimeImmutable('2025-01-15T10:30:00+00:00'),
         );
 
+        self::assertNull($this->collection->findOne(['_id' => 'user-123']));
+
         $this->projection->onUserRegistered($event);
 
-        self::assertTrue($this->readModel->existsWithEmail(Email::fromString('john@example.com')));
+        $document = $this->findDocument('user-123');
+        self::assertSame('john@example.com', $document['email']);
     }
 
     public function testItStoresEmailAsProvidedByDomain(): void
     {
-        // Email normalization is a domain concern - the projection trusts the event data
+        // Email normalization is a domain concern - the projection stores exactly what it receives
         $event = new UserRegistered(
             id: 'user-456',
-            email: 'john.doe@example.com', // Already normalized by domain
+            email: 'John.Doe@Example.COM', // Mixed case to verify no normalization
             hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
 
         $this->projection->onUserRegistered($event);
 
-        self::assertTrue($this->readModel->existsWithEmail(Email::fromString('john.doe@example.com')));
+        // Verify the exact value stored in MongoDB (not via read model which might normalize)
+        $document = $this->findDocument('user-456');
+        self::assertSame('John.Doe@Example.COM', $document['email']);
     }
 
-    public function testItStoresUserIdAsDocumentId(): void
-    {
-        $event = new UserRegistered(
-            id: 'user-789',
-            email: 'jane@example.com',
-            hashedPassword: 'hashed_password',
-            occurredAt: new \DateTimeImmutable(),
-        );
-
-        $this->projection->onUserRegistered($event);
-
-        $document = $this->collection->findOne(['_id' => 'user-789']);
-        self::assertNotNull($document);
-        self::assertInstanceOf(BSONDocument::class, $document);
-        self::assertSame('jane@example.com', $document['email']);
-    }
-
-    public function testItIsIdempotent(): void
+    public function testUserRegisteredIsIdempotent(): void
     {
         $event = new UserRegistered(
             id: 'user-idempotent',
@@ -110,7 +96,7 @@ final class UserProjectionTest extends TestCase
         self::assertSame(1, $count);
     }
 
-    public function testItHandlesMultipleUsers(): void
+    public function testUserRegisteredHandlesMultipleUsers(): void
     {
         $this->projection->onUserRegistered(new UserRegistered(
             id: 'user-1',
@@ -133,10 +119,12 @@ final class UserProjectionTest extends TestCase
             occurredAt: new \DateTimeImmutable(),
         ));
 
-        self::assertTrue($this->readModel->existsWithEmail(Email::fromString('first@example.com')));
-        self::assertTrue($this->readModel->existsWithEmail(Email::fromString('second@example.com')));
-        self::assertTrue($this->readModel->existsWithEmail(Email::fromString('third@example.com')));
-        self::assertFalse($this->readModel->existsWithEmail(Email::fromString('nonexistent@example.com')));
+        // Verify all three documents exist
+        $this->findDocument('user-1');
+        $this->findDocument('user-2');
+        $this->findDocument('user-3');
+
+        self::assertSame(3, $this->collection->countDocuments([]));
     }
 
     public function testItStoresRegistrationTimestamp(): void
@@ -151,18 +139,12 @@ final class UserProjectionTest extends TestCase
 
         $this->projection->onUserRegistered($event);
 
-        $document = $this->collection->findOne(['_id' => 'user-timestamp']);
-        self::assertNotNull($document);
-        assert(is_array($document) || $document instanceof \ArrayAccess);
+        $document = $this->findDocument('user-timestamp');
         self::assertArrayHasKey('registered_at', (array) $document);
 
-        // Verify the timestamp is stored correctly
         $storedDate = $document['registered_at'];
         self::assertInstanceOf(UTCDateTime::class, $storedDate);
-        self::assertSame(
-            $registeredAt->format('Y-m-d H:i:s'),
-            $storedDate->toDateTime()->format('Y-m-d H:i:s'),
-        );
+        self::assertDateTimeEquals($registeredAt, $storedDate);
     }
 
     public function testItStoresHashedPassword(): void
@@ -176,10 +158,103 @@ final class UserProjectionTest extends TestCase
 
         $this->projection->onUserRegistered($event);
 
-        $document = $this->collection->findOne(['_id' => 'user-password-test']);
-        self::assertNotNull($document);
-        assert(is_array($document) || $document instanceof \ArrayAccess);
+        $document = $this->findDocument('user-password-test');
         self::assertArrayHasKey('hashed_password', (array) $document);
         self::assertSame('$2y$10$abcdefghijklmnopqrstuv', $document['hashed_password']);
+    }
+
+    public function testItUpdatesLastLoginAtForExistingUser(): void
+    {
+        // First, register the user
+        $registeredEvent = new UserRegistered(
+            id: 'user-login-test',
+            email: 'login@example.com',
+            hashedPassword: 'hashed_password',
+            occurredAt: new \DateTimeImmutable('2025-01-15T10:00:00+00:00'),
+        );
+        $this->projection->onUserRegistered($registeredEvent);
+
+        // Then, log in the user
+        $loginAt = new \DateTimeImmutable('2025-01-15T14:30:00+00:00');
+        $loginEvent = new UserLoggedIn(
+            id: 'user-login-test',
+            occurredAt: $loginAt,
+        );
+        $this->projection->onUserLoggedIn($loginEvent);
+
+        // Verify last_login_at was updated
+        $document = $this->findDocument('user-login-test');
+        self::assertArrayHasKey('last_login_at', (array) $document);
+
+        $lastLoginAt = $document['last_login_at'];
+        self::assertInstanceOf(UTCDateTime::class, $lastLoginAt);
+        self::assertDateTimeEquals($loginAt, $lastLoginAt);
+    }
+
+    public function testItUpdatesLastLoginAtOnSubsequentLogins(): void
+    {
+        // Register user first
+        $this->projection->onUserRegistered(new UserRegistered(
+            id: 'user-multi-login',
+            email: 'multi-login@example.com',
+            hashedPassword: 'hashed_password',
+            occurredAt: new \DateTimeImmutable('2025-01-01T00:00:00+00:00'),
+        ));
+
+        // First login
+        $firstLoginAt = new \DateTimeImmutable('2025-01-15T10:00:00+00:00');
+        $this->projection->onUserLoggedIn(new UserLoggedIn(
+            id: 'user-multi-login',
+            occurredAt: $firstLoginAt,
+        ));
+
+        $document = $this->findDocument('user-multi-login');
+        $firstLastLoginAt = $document['last_login_at'];
+        self::assertInstanceOf(UTCDateTime::class, $firstLastLoginAt);
+        self::assertDateTimeEquals($firstLoginAt, $firstLastLoginAt);
+
+        // Second login with later timestamp
+        $secondLoginAt = new \DateTimeImmutable('2025-01-20T14:30:00+00:00');
+        $this->projection->onUserLoggedIn(new UserLoggedIn(
+            id: 'user-multi-login',
+            occurredAt: $secondLoginAt,
+        ));
+
+        $document = $this->findDocument('user-multi-login');
+        $secondLastLoginAt = $document['last_login_at'];
+        self::assertInstanceOf(UTCDateTime::class, $secondLastLoginAt);
+        self::assertDateTimeEquals($secondLoginAt, $secondLastLoginAt);
+    }
+
+    public function testUserLoggedInIsIdempotent(): void
+    {
+        // Register user first
+        $this->projection->onUserRegistered(new UserRegistered(
+            id: 'user-idempotent-login',
+            email: 'idempotent-login@example.com',
+            hashedPassword: 'hashed_password',
+            occurredAt: new \DateTimeImmutable(),
+        ));
+
+        $loginEvent = new UserLoggedIn(
+            id: 'user-idempotent-login',
+            occurredAt: new \DateTimeImmutable('2025-01-15T12:00:00+00:00'),
+        );
+
+        // Apply the same login event twice
+        $this->projection->onUserLoggedIn($loginEvent);
+        $this->projection->onUserLoggedIn($loginEvent);
+
+        // Should still have only one document with the same last_login_at
+        $count = $this->collection->countDocuments(['_id' => 'user-idempotent-login']);
+        self::assertSame(1, $count);
+
+        $document = $this->findDocument('user-idempotent-login');
+        $lastLoginAt = $document['last_login_at'];
+        self::assertInstanceOf(UTCDateTime::class, $lastLoginAt);
+        self::assertDateTimeEquals(
+            new \DateTimeImmutable('2025-01-15T12:00:00+00:00'),
+            $lastLoginAt,
+        );
     }
 }
