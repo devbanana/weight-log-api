@@ -1,55 +1,51 @@
 {
-    "type": "project",
     "license": "proprietary",
-    "minimum-stability": "dev",
-    "prefer-stable": true,
+    "type": "project",
     "require": {
         "php": ">=8.4",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "ext-mongodb": "*",
         "api-platform/symfony": "^4.2",
         "lexik/jwt-authentication-bundle": "^3.1",
         "mongodb/mongodb": "^2.1",
         "nelmio/cors-bundle": "^2.6",
         "phpdocumentor/reflection-docblock": "^5.6",
         "phpstan/phpdoc-parser": "^2.3",
-        "symfony/asset": "7.3.*",
-        "symfony/console": "7.3.*",
-        "symfony/dotenv": "7.3.*",
-        "symfony/expression-language": "7.3.*",
+        "symfony/asset": "~7.3.0",
+        "symfony/console": "~7.3.0",
+        "symfony/dotenv": "~7.3.0",
+        "symfony/expression-language": "~7.3.0",
         "symfony/flex": "^2",
-        "symfony/framework-bundle": "7.3.*",
-        "symfony/messenger": "7.3.*",
-        "symfony/property-access": "7.3.*",
-        "symfony/property-info": "7.3.*",
-        "symfony/runtime": "7.3.*",
-        "symfony/security-bundle": "7.3.*",
-        "symfony/serializer": "7.3.*",
-        "symfony/twig-bundle": "7.3.*",
-        "symfony/uid": "7.3.*",
-        "symfony/validator": "7.3.*",
-        "symfony/yaml": "7.3.*"
+        "symfony/framework-bundle": "~7.3.0",
+        "symfony/messenger": "~7.3.0",
+        "symfony/property-access": "~7.3.0",
+        "symfony/property-info": "~7.3.0",
+        "symfony/runtime": "~7.3.0",
+        "symfony/security-bundle": "~7.3.0",
+        "symfony/serializer": "~7.3.0",
+        "symfony/twig-bundle": "~7.3.0",
+        "symfony/uid": "~7.3.0",
+        "symfony/validator": "~7.3.0",
+        "symfony/yaml": "~7.3.0"
     },
-    "config": {
-        "allow-plugins": {
-            "php-http/discovery": true,
-            "symfony/flex": true,
-            "symfony/runtime": true,
-            "phpstan/extension-installer": true
-        },
-        "bump-after-update": true,
-        "sort-packages": true
-    },
-    "autoload": {
-        "psr-4": {
-            "App\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "App\\Tests\\": "tests/",
-            "Tools\\": "tools/"
-        }
+    "require-dev": {
+        "behat/behat": "*",
+        "deptrac/deptrac": "^4.2",
+        "ergebnis/composer-normalize": "^2.48",
+        "friends-of-behat/symfony-extension": "*",
+        "friendsofphp/php-cs-fixer": "^3.91.3",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
+        "phpstan/phpstan-webmozart-assert": "^2.0",
+        "phpunit/phpunit": "^12.4",
+        "shipmonk/dead-code-detector": "^0.14.0",
+        "symfony/browser-kit": "~7.3.0",
+        "symfony/monolog-bundle": "^4.0",
+        "symfony/phpunit-bridge": "^7.3",
+        "webmozart/assert": "^1.12"
     },
     "replace": {
         "symfony/polyfill-ctype": "*",
@@ -61,31 +57,32 @@
         "symfony/polyfill-php81": "*",
         "symfony/polyfill-php82": "*"
     },
-    "scripts": {
-        "auto-scripts": {
-            "cache:clear": "symfony-cmd",
-            "assets:install %PUBLIC_DIR%": "symfony-cmd"
-        },
-        "post-install-cmd": [
-            "@auto-scripts"
-        ],
-        "post-update-cmd": [
-            "@auto-scripts"
-        ],
-        "analyze": "vendor/bin/phpstan analyse --memory-limit=1G",
-        "deptrac": "vendor/bin/deptrac analyse --report-uncovered",
-        "fix:cs": "vendor/bin/php-cs-fixer fix --diff",
-        "test": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit",
-        "test:unit": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --testsuite=unit",
-        "test:integration": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --testsuite=integration",
-        "test:coverage": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --coverage-text | tee /dev/stderr | grep -q 'Classes: 100.00%' || (echo '\\n❌ Coverage must be 100% for all included classes' && exit 1)",
-        "test:usecase": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat --suite=usecase",
-        "test:e2e": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat --suite=e2e",
-        "test:behat": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat",
-        "test:all": "composer test && composer test:behat"
-    },
     "conflict": {
         "symfony/symfony": "*"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\Tests\\": "tests/",
+            "Tools\\": "tools/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "ergebnis/composer-normalize": true,
+            "php-http/discovery": true,
+            "phpstan/extension-installer": true,
+            "symfony/flex": true,
+            "symfony/runtime": true
+        },
+        "bump-after-update": true,
+        "sort-packages": true
     },
     "extra": {
         "symfony": {
@@ -93,21 +90,27 @@
             "require": "7.3.*"
         }
     },
-    "require-dev": {
-        "behat/behat": "*",
-        "deptrac/deptrac": "^4.2",
-        "friends-of-behat/symfony-extension": "*",
-        "friendsofphp/php-cs-fixer": "^3.91.3",
-        "phpstan/extension-installer": "^1.4",
-        "phpstan/phpstan": "^2.1",
-        "phpstan/phpstan-strict-rules": "^2.0",
-        "phpstan/phpstan-symfony": "^2.0",
-        "phpstan/phpstan-webmozart-assert": "^2.0",
-        "phpunit/phpunit": "^12.4",
-        "shipmonk/dead-code-detector": "^0.14.0",
-        "symfony/browser-kit": "7.3.*",
-        "symfony/monolog-bundle": "^4.0",
-        "symfony/phpunit-bridge": "^7.3",
-        "webmozart/assert": "^1.12"
+    "scripts": {
+        "post-install-cmd": [
+            "@auto-scripts"
+        ],
+        "post-update-cmd": [
+            "@auto-scripts"
+        ],
+        "analyze": "vendor/bin/phpstan analyse --memory-limit=1G",
+        "auto-scripts": {
+            "cache:clear": "symfony-cmd",
+            "assets:install %PUBLIC_DIR%": "symfony-cmd"
+        },
+        "deptrac": "vendor/bin/deptrac analyse --report-uncovered",
+        "fix:cs": "vendor/bin/php-cs-fixer fix --diff",
+        "test": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit",
+        "test:all": "composer test && composer test:behat",
+        "test:behat": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat",
+        "test:coverage": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --coverage-text | tee /dev/stderr | grep -q 'Classes: 100.00%' || (echo '\\n❌ Coverage must be 100% for all included classes' && exit 1)",
+        "test:e2e": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat --suite=e2e",
+        "test:integration": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --testsuite=integration",
+        "test:unit": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --testsuite=unit",
+        "test:usecase": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat --suite=usecase"
     }
 }
