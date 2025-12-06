@@ -69,7 +69,7 @@ final class InMemoryEventStore implements EventStoreInterface
             );
         }
 
-        $key = $this->key($aggregateId, $aggregateType);
+        $key = self::key($aggregateId, $aggregateType);
 
         if (!isset($this->eventStreams[$key])) {
             $this->eventStreams[$key] = [];
@@ -90,7 +90,7 @@ final class InMemoryEventStore implements EventStoreInterface
     #[\Override]
     public function getEvents(string $aggregateId, string $aggregateType): array
     {
-        $key = $this->key($aggregateId, $aggregateType);
+        $key = self::key($aggregateId, $aggregateType);
 
         return $this->eventStreams[$key] ?? [];
     }
@@ -98,12 +98,12 @@ final class InMemoryEventStore implements EventStoreInterface
     #[\Override]
     public function getVersion(string $aggregateId, string $aggregateType): int
     {
-        $key = $this->key($aggregateId, $aggregateType);
+        $key = self::key($aggregateId, $aggregateType);
 
         return $this->versions[$key] ?? 0;
     }
 
-    private function key(string $aggregateId, string $aggregateType): string
+    private static function key(string $aggregateId, string $aggregateType): string
     {
         return $aggregateType . ':' . $aggregateId;
     }

@@ -11,6 +11,7 @@ use MongoDB\BSON\UTCDateTime;
 use MongoDB\Client;
 use MongoDB\Collection;
 use MongoDB\Model\BSONDocument;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
@@ -26,10 +27,9 @@ use Symfony\Component\Serializer\Serializer;
  * For contract tests that verify interface behavior across all
  * implementations, see EventStoreContractTest.
  *
- * @covers \App\Infrastructure\Persistence\MongoDB\MongoEventStore
- *
  * @internal
  */
+#[CoversClass(MongoEventStore::class)]
 final class MongoEventStoreTest extends TestCase
 {
     private const string AGGREGATE_TYPE = User::class;

@@ -6,14 +6,14 @@ namespace App\Tests\Unit\Domain\User\ValueObject;
 
 use App\Domain\User\ValueObject\HashedPassword;
 use App\Domain\User\ValueObject\PlainPassword;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \App\Domain\User\ValueObject\HashedPassword
- *
  * @internal
  */
+#[CoversClass(HashedPassword::class)]
 final class HashedPasswordTest extends TestCase
 {
     public function testItFailsWithEmptyHash(): void

@@ -9,8 +9,11 @@ use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\User;
 use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\Email;
+use App\Infrastructure\Persistence\EventStore\DispatchingEventStore;
+use App\Infrastructure\Projection\UserProjection;
 use MongoDB\Client;
 use MongoDB\Collection;
+use PHPUnit\Framework\Attributes\CoversClass;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -23,11 +26,10 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  * they are automatically dispatched via Symfony Messenger and handled by
  * projections that update the read model.
  *
- * @covers \App\Infrastructure\Persistence\EventStore\DispatchingEventStore
- * @covers \App\Infrastructure\Projection\UserProjection
- *
  * @internal
  */
+#[CoversClass(DispatchingEventStore::class)]
+#[CoversClass(UserProjection::class)]
 final class EventDispatchIntegrationTest extends KernelTestCase
 {
     private EventStoreInterface $eventStore;

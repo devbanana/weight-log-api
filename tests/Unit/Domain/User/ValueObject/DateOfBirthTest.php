@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Domain\User\ValueObject;
 
 use App\Domain\User\ValueObject\DateOfBirth;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \App\Domain\User\ValueObject\DateOfBirth
- *
  * @internal
  */
+#[CoversClass(DateOfBirth::class)]
 final class DateOfBirthTest extends TestCase
 {
     public function testItCanBeConvertedFromValidDateString(): void

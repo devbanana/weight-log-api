@@ -88,7 +88,7 @@ final class User implements EventSourcedAggregateInterface
     {
         match ($event::class) {
             UserRegistered::class => $this->applyUserRegistered($event),
-            UserLoggedIn::class => $this->applyUserLoggedIn($event),
+            UserLoggedIn::class => self::applyUserLoggedIn($event),
             default => throw new \InvalidArgumentException(sprintf(
                 'Unknown event type "%s" for User aggregate',
                 $event::class,
@@ -104,7 +104,7 @@ final class User implements EventSourcedAggregateInterface
         $this->registeredAt = $event->occurredAt;
     }
 
-    private function applyUserLoggedIn(UserLoggedIn $event): void
+    private static function applyUserLoggedIn(UserLoggedIn $event): void
     {
         // Login events don't modify aggregate state beyond what's tracked in the event store
     }

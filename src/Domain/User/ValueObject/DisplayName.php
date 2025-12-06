@@ -9,7 +9,7 @@ use Webmozart\Assert\Assert;
 final readonly class DisplayName
 {
     private function __construct(
-        private string $value
+        private string $value,
     ) {
         Assert::notEmpty($this->value, 'Display name cannot be empty');
         Assert::maxLength($this->value, 50, 'Display name cannot exceed 50 characters');
@@ -17,6 +17,6 @@ final readonly class DisplayName
 
     public static function fromString(string $value): self
     {
-        return new self(trim($value));
+        return new self(mb_trim($value));
     }
 }

@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Domain\User\ValueObject;
 
 use App\Domain\User\ValueObject\DisplayName;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \App\Domain\User\ValueObject\DisplayName;
- *
  * @internal
  */
+#[CoversClass(DisplayName::class)]
 final class DisplayNameTest extends TestCase
 {
     public function testItCanBeConvertedFromValidString(): void

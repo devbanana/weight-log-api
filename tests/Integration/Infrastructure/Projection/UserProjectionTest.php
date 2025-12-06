@@ -10,6 +10,7 @@ use App\Infrastructure\Projection\UserProjection;
 use MongoDB\BSON\UTCDateTime;
 use MongoDB\Client;
 use MongoDB\Collection;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -18,10 +19,9 @@ use PHPUnit\Framework\TestCase;
  * Tests that the projection correctly updates the MongoDB users collection
  * when domain events are received.
  *
- * @covers \App\Infrastructure\Projection\UserProjection
- *
  * @internal
  */
+#[CoversClass(UserProjection::class)]
 final class UserProjectionTest extends TestCase
 {
     use MongoHelper;

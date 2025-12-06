@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Domain\User\ValueObject;
 
 use App\Domain\User\ValueObject\UserId;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \App\Domain\User\ValueObject\UserId
- *
  * @internal
  */
+#[CoversClass(UserId::class)]
 final class UserIdTest extends TestCase
 {
     public function testItCreatesFromString(): void

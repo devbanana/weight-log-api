@@ -7,7 +7,7 @@ namespace App\Domain\User\ValueObject;
 final readonly class DateOfBirth
 {
     private function __construct(
-        private string $value
+        private string $value,
     ) {
         $date = \DateTimeImmutable::createFromFormat('Y-m-d', $this->value);
 
@@ -18,7 +18,7 @@ final readonly class DateOfBirth
 
     public static function fromString(string $value): self
     {
-        return new self(trim($value));
+        return new self(mb_trim($value));
     }
 
     public static function fromDateTime(\DateTimeImmutable $dateTime): self

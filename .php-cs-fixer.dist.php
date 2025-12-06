@@ -19,16 +19,20 @@ return new Config()
         '@autoPHPUnitMigration:risky' => true,
         '@PhpCsFixer' => true,
         '@PhpCsFixer:risky' => true,
+        'attribute_empty_parentheses' => true,
         'concat_space' => [
             'spacing' => 'one',
         ],
         'date_time_immutable' => true,
         'final_class' => true,
         'final_public_method_for_abstract_class' => true,
+        'mb_str_functions' => true,
+        'modernize_strpos' => true,
         'native_function_invocation' => [
             'include' => [],
             'strict' => true,
         ],
+        'numeric_literal_separator' => true,
         'ordered_class_elements' => [
             'order' => [
                 'use_trait',
@@ -47,13 +51,21 @@ return new Config()
                 'method_private',
             ],
         ],
+        'ordered_interfaces' => true,
         'phpdoc_line_span' => true,
         'phpdoc_types_order' => [
             'null_adjustment' => 'always_last',
         ],
+        'php_unit_attributes' => true,
         'regular_callable_call' => true,
         'simplified_if_return' => true,
         'single_line_empty_body' => false,
+        'static_private_method' => true,
+        'stringable_for_to_string' => true,
+        'trailing_comma_in_multiline' => [
+            'after_heredoc' => true,
+            'elements' => ['arguments', 'array_destructuring', 'arrays', 'match', 'parameters'],
+        ],
         'yoda_style' => false,
     ])
     ->setRiskyAllowed(true)

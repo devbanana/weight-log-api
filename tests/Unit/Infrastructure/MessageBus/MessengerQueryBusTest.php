@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Infrastructure\MessageBus;
 
 use App\Application\MessageBus\QueryInterface;
 use App\Infrastructure\MessageBus\MessengerQueryBus;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
@@ -19,9 +20,8 @@ use Symfony\Component\Messenger\Stamp\HandledStamp;
  * Tests the result extraction and exception unwrapping logic.
  *
  * @internal
- *
- * @covers \App\Infrastructure\MessageBus\MessengerQueryBus
  */
+#[CoversClass(MessengerQueryBus::class)]
 final class MessengerQueryBusTest extends TestCase
 {
     /**
@@ -41,7 +41,7 @@ final class MessengerQueryBusTest extends TestCase
     public function testItDispatchesQueryAndReturnsResult(): void
     {
         // Arrange: Create a test query and expected result
-        $query = $this->createTestQuery();
+        $query = self::createTestQuery();
         $expectedResult = ['id' => 'user-123', 'name' => 'Test User'];
 
         // Create envelope with HandledStamp containing the result
@@ -65,7 +65,7 @@ final class MessengerQueryBusTest extends TestCase
     public function testItReturnsNullResultWhenHandlerReturnsNull(): void
     {
         // Arrange: Create a test query with null result
-        $query = $this->createTestQuery();
+        $query = self::createTestQuery();
 
         $envelope = new Envelope($query);
         $envelope = $envelope->with(new HandledStamp(null, 'TestHandler'));
@@ -87,7 +87,7 @@ final class MessengerQueryBusTest extends TestCase
     public function testItUnwrapsSingleException(): void
     {
         // Arrange: Create a test query and a domain exception
-        $query = $this->createTestQuery();
+        $query = self::createTestQuery();
         $domainException = new \InvalidArgumentException('User not found');
 
         // Create HandlerFailedException with single wrapped exception
@@ -112,7 +112,7 @@ final class MessengerQueryBusTest extends TestCase
     public function testItPreservesHandlerFailedExceptionWithMultipleWrappedExceptions(): void
     {
         // Arrange: Create a test query and multiple exceptions
-        $query = $this->createTestQuery();
+        $query = self::createTestQuery();
         $exception1 = new \InvalidArgumentException('First error');
         $exception2 = new \RuntimeException('Second error');
 
@@ -137,7 +137,7 @@ final class MessengerQueryBusTest extends TestCase
     public function testItPassesThroughNonHandlerFailedExceptions(): void
     {
         // Arrange: Messenger throws a different exception type
-        $query = $this->createTestQuery();
+        $query = self::createTestQuery();
         $transportException = new \RuntimeException('Connection failed');
 
         $this->messengerBus
@@ -158,7 +158,7 @@ final class MessengerQueryBusTest extends TestCase
     /**
      * @return QueryInterface<mixed>
      */
-    private function createTestQuery(): QueryInterface
+    private static function createTestQuery(): QueryInterface
     {
         return new class implements QueryInterface {
             public function __construct(

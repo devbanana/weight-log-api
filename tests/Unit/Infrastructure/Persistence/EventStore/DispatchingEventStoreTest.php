@@ -9,15 +9,15 @@ use App\Domain\Common\EventStore\ConcurrencyException;
 use App\Domain\Common\EventStore\EventStoreInterface;
 use App\Domain\User\Event\UserRegistered;
 use App\Infrastructure\Persistence\EventStore\DispatchingEventStore;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * @covers \App\Infrastructure\Persistence\EventStore\DispatchingEventStore
- *
  * @internal
  */
+#[CoversClass(DispatchingEventStore::class)]
 final class DispatchingEventStoreTest extends TestCase
 {
     public function testItDelegatesToInnerEventStoreForAppend(): void

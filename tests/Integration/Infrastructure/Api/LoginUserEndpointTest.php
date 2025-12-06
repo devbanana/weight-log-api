@@ -10,7 +10,10 @@ use App\Application\User\Command\LoginCommand;
 use App\Application\User\Query\FindUserAuthDataByEmailQuery;
 use App\Application\User\Query\UserAuthData;
 use App\Domain\User\Exception\CouldNotAuthenticate;
+use App\Infrastructure\Api\Resource\UserLoginResource;
+use App\Infrastructure\Api\State\LoginUserProcessor;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -23,10 +26,9 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * correctly transforms HTTP requests into queries/commands and generates JWT tokens.
  *
  * @internal
- *
- * @covers \App\Infrastructure\Api\Resource\UserLoginResource
- * @covers \App\Infrastructure\Api\State\LoginUserProcessor
  */
+#[CoversClass(UserLoginResource::class)]
+#[CoversClass(LoginUserProcessor::class)]
 final class LoginUserEndpointTest extends WebTestCase
 {
     use HttpHelper;

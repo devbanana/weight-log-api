@@ -8,6 +8,8 @@ use App\Application\MessageBus\CommandBusInterface;
 use App\Application\User\Command\RegisterUserCommand;
 use App\Domain\User\Exception\UserAlreadyExistsException;
 use App\Domain\User\ValueObject\Email;
+use App\Infrastructure\Api\State\RegisterUserProcessor;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -26,9 +28,8 @@ use Symfony\Component\Uid\UuidV7;
  * and proper error handling/response codes.
  *
  * @internal
- *
- * @covers \App\Infrastructure\Api\State\RegisterUserProcessor
  */
+#[CoversClass(RegisterUserProcessor::class)]
 final class RegisterUserEndpointTest extends WebTestCase
 {
     use HttpHelper;
@@ -222,7 +223,7 @@ final class RegisterUserEndpointTest extends WebTestCase
             ->expects(self::once())
             ->method('dispatch')
             ->willThrowException(UserAlreadyExistsException::withEmail(
-                Email::fromString('duplicate@example.com')
+                Email::fromString('duplicate@example.com'),
             ))
         ;
 
@@ -250,7 +251,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act (type mismatch during deserialization)
-        $this->postJson('/api/auth/register', ['email' => 12345]);
+        $this->postJson('/api/auth/register', ['email' => 12_345]);
 
         // Assert
         self::assertResponseStatusCodeSame(400);

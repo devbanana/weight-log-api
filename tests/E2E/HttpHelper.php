@@ -27,7 +27,7 @@ trait HttpHelper
                 'CONTENT_TYPE' => 'application/json',
                 'HTTP_ACCEPT' => 'application/json',
             ],
-            content: json_encode($data, JSON_THROW_ON_ERROR)
+            content: json_encode($data, JSON_THROW_ON_ERROR),
         );
 
         return $this->kernel->handle($request);
@@ -39,7 +39,7 @@ trait HttpHelper
         Assert::same(
             $response->getStatusCode(),
             $expected,
-            sprintf('Expected %d %s. Response: %s', $expected, $description, self::getResponseContent($response))
+            sprintf('Expected %d %s. Response: %s', $expected, $description, self::getResponseContent($response)),
         );
     }
 

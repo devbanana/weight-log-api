@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Domain\User\ValueObject;
 
 use App\Domain\User\ValueObject\PlainPassword;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \App\Domain\User\ValueObject\PlainPassword
- *
  * @internal
  */
+#[CoversClass(PlainPassword::class)]
 final class PlainPasswordTest extends TestCase
 {
     #[DataProvider('provideItFailsWithInvalidStringCases')]
@@ -65,7 +65,7 @@ final class PlainPasswordTest extends TestCase
 
         yield 'long password' => ['ThisIsAVeryLongAndSecurePassword123!'];
 
-        yield 'extremely long password' => ['P' . str_repeat('a', 1000) . 'ss123!'];
+        yield 'extremely long password' => ['P' . str_repeat('a', 1_000) . 'ss123!'];
 
         yield 'with spaces' => ['My Pass 123!'];
 

@@ -12,6 +12,7 @@ use App\Domain\User\User;
 use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
 use App\Tests\UseCase\InMemoryEventStore;
 use MongoDB\Client;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
@@ -27,11 +28,10 @@ use Symfony\Component\Serializer\Serializer;
  * Implementation-specific behavior (like MongoDB's BSON document structure)
  * is tested separately in adapter-specific test classes.
  *
- * @covers \App\Infrastructure\Persistence\MongoDB\MongoEventStore
- * @covers \App\Tests\UseCase\InMemoryEventStore
- *
  * @internal
  */
+#[CoversClass(MongoEventStore::class)]
+#[CoversClass(InMemoryEventStore::class)]
 final class EventStoreContractTest extends TestCase
 {
     private const string AGGREGATE_TYPE = User::class;
@@ -40,7 +40,7 @@ final class EventStoreContractTest extends TestCase
     public function testItAppendsEventsToNewAggregate(EventStoreInterface $eventStore): void
     {
         $aggregateId = 'user-123';
-        $event = $this->createEvent($aggregateId);
+        $event = self::createEvent($aggregateId);
 
         $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$event], expectedVersion: 0);
 
@@ -53,8 +53,8 @@ final class EventStoreContractTest extends TestCase
     public function testItRetrievesAllEventsForAggregate(EventStoreInterface $eventStore): void
     {
         $aggregateId = 'user-456';
-        $event1 = $this->createEvent($aggregateId, 'first@example.com');
-        $event2 = $this->createEvent($aggregateId, 'second@example.com');
+        $event1 = self::createEvent($aggregateId, 'first@example.com');
+        $event2 = self::createEvent($aggregateId, 'second@example.com');
 
         $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$event1], expectedVersion: 0);
         $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$event2], expectedVersion: 1);
@@ -71,7 +71,7 @@ final class EventStoreContractTest extends TestCase
     public function testItCanAppendMultipleEventsAtOnce(EventStoreInterface $eventStore): void
     {
         $aggregateId = 'user-789';
-        $event1 = $this->createEvent($aggregateId, 'one@example.com');
+        $event1 = self::createEvent($aggregateId, 'one@example.com');
         $event2 = new class($aggregateId) implements DomainEventInterface {
             public function __construct(
                 public string $id,
@@ -104,10 +104,10 @@ final class EventStoreContractTest extends TestCase
 
         self::assertSame(0, $eventStore->getVersion($aggregateId, self::AGGREGATE_TYPE));
 
-        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$this->createEvent($aggregateId)], expectedVersion: 0);
+        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [self::createEvent($aggregateId)], expectedVersion: 0);
         self::assertSame(1, $eventStore->getVersion($aggregateId, self::AGGREGATE_TYPE));
 
-        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$this->createEvent($aggregateId)], expectedVersion: 1);
+        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [self::createEvent($aggregateId)], expectedVersion: 1);
         self::assertSame(2, $eventStore->getVersion($aggregateId, self::AGGREGATE_TYPE));
     }
 
@@ -116,12 +116,12 @@ final class EventStoreContractTest extends TestCase
     {
         $aggregateId = 'user-concurrency-test';
 
-        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$this->createEvent($aggregateId)], expectedVersion: 0);
+        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [self::createEvent($aggregateId)], expectedVersion: 0);
 
         $this->expectException(ConcurrencyException::class);
 
         // Try to append with wrong expected version (0 instead of 1)
-        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$this->createEvent($aggregateId)], expectedVersion: 0);
+        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [self::createEvent($aggregateId)], expectedVersion: 0);
     }
 
     #[DataProvider('eventStoreProvider')]
@@ -132,7 +132,7 @@ final class EventStoreContractTest extends TestCase
         $this->expectException(ConcurrencyException::class);
 
         // Try to append with expected version 5 when no events exist (version is 0)
-        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [$this->createEvent($aggregateId)], expectedVersion: 5);
+        $eventStore->append($aggregateId, self::AGGREGATE_TYPE, [self::createEvent($aggregateId)], expectedVersion: 5);
     }
 
     #[DataProvider('eventStoreProvider')]
@@ -155,7 +155,7 @@ final class EventStoreContractTest extends TestCase
     public function testItIsolatesEventsByAggregateType(EventStoreInterface $eventStore): void
     {
         $aggregateId = 'shared-id';
-        $userEvent = $this->createEvent($aggregateId, 'user@example.com');
+        $userEvent = self::createEvent($aggregateId, 'user@example.com');
 
         $eventStore->append($aggregateId, 'User', [$userEvent], expectedVersion: 0);
 
@@ -167,8 +167,8 @@ final class EventStoreContractTest extends TestCase
     #[DataProvider('eventStoreProvider')]
     public function testItIsolatesEventsByAggregateId(EventStoreInterface $eventStore): void
     {
-        $event1 = $this->createEvent('user-1', 'user1@example.com');
-        $event2 = $this->createEvent('user-2', 'user2@example.com');
+        $event1 = self::createEvent('user-1', 'user1@example.com');
+        $event2 = self::createEvent('user-2', 'user2@example.com');
 
         $eventStore->append('user-1', self::AGGREGATE_TYPE, [$event1], expectedVersion: 0);
         $eventStore->append('user-2', self::AGGREGATE_TYPE, [$event2], expectedVersion: 0);
@@ -212,7 +212,7 @@ final class EventStoreContractTest extends TestCase
     public function testItReturnsEventsInVersionOrder(EventStoreInterface $eventStore): void
     {
         $aggregateId = 'user-order-test';
-        $event1 = $this->createEvent($aggregateId, 'user@example.com');
+        $event1 = self::createEvent($aggregateId, 'user@example.com');
         $event2 = new class($aggregateId) implements DomainEventInterface {
             public function __construct(
                 public string $id,
@@ -249,8 +249,8 @@ final class EventStoreContractTest extends TestCase
     {
         $aggregateId1 = 'user-1';
         $aggregateId2 = 'user-2';
-        $event1 = $this->createEvent($aggregateId1, 'first@example.com');
-        $event2 = $this->createEvent($aggregateId2, 'second@example.com');
+        $event1 = self::createEvent($aggregateId1, 'first@example.com');
+        $event2 = self::createEvent($aggregateId2, 'second@example.com');
 
         $this->expectException(\InvalidArgumentException::class);
 
@@ -288,7 +288,7 @@ final class EventStoreContractTest extends TestCase
         return new MongoEventStore($collection, $serializer);
     }
 
-    private function createEvent(string $aggregateId, string $email = 'test@example.com'): DomainEventInterface
+    private static function createEvent(string $aggregateId, string $email = 'test@example.com'): DomainEventInterface
     {
         return new UserRegistered(
             id: $aggregateId,

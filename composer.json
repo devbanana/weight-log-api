@@ -97,7 +97,7 @@
         "behat/behat": "*",
         "deptrac/deptrac": "^4.2",
         "friends-of-behat/symfony-extension": "*",
-        "friendsofphp/php-cs-fixer": "^3.89",
+        "friendsofphp/php-cs-fixer": "^3.91.3",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-strict-rules": "^2.0",

@@ -44,7 +44,7 @@ final class InfrastructureServiceUsageProvider extends ReflectionBasedMemberUsag
         foreach (self::DI_MANAGED_INTERFACES as $interface) {
             if ($declaringClass->implementsInterface($interface)) {
                 return VirtualUsageData::withNote(
-                    sprintf('Constructor used via DI (implements %s)', $this->getShortClassName($interface))
+                    sprintf('Constructor used via DI (implements %s)', self::getShortClassName($interface)),
                 );
             }
         }
@@ -55,7 +55,7 @@ final class InfrastructureServiceUsageProvider extends ReflectionBasedMemberUsag
     /**
      * @param class-string $className
      */
-    private function getShortClassName(string $className): string
+    private static function getShortClassName(string $className): string
     {
         $parts = explode('\\', $className);
 

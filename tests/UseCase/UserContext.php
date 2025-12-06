@@ -107,7 +107,7 @@ final class UserContext implements Context
     {
         try {
             $authData = $this->container->queryBus->dispatch(
-                new FindUserAuthDataByEmailQuery($email)
+                new FindUserAuthDataByEmailQuery($email),
             );
 
             if ($authData === null) {

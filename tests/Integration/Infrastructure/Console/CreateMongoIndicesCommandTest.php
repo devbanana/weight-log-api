@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Infrastructure\Console;
 
+use App\Infrastructure\Console\CreateMongoIndicesCommand;
 use MongoDB\Client;
 use MongoDB\Database;
 use MongoDB\Driver\Exception\BulkWriteException;
 use MongoDB\Driver\Exception\CommandException;
+use PHPUnit\Framework\Attributes\CoversClass;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -18,10 +20,9 @@ use Symfony\Component\Console\Tester\CommandTester;
  * Verifies that the command creates the expected indices and that
  * those indices actually enforce uniqueness constraints.
  *
- * @covers \App\Infrastructure\Console\CreateMongoIndicesCommand
- *
  * @internal
  */
+#[CoversClass(CreateMongoIndicesCommand::class)]
 final class CreateMongoIndicesCommandTest extends KernelTestCase
 {
     private Database $database;

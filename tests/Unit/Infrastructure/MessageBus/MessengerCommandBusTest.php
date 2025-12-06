@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Infrastructure\MessageBus;
 
 use App\Application\MessageBus\CommandInterface;
 use App\Infrastructure\MessageBus\MessengerCommandBus;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
@@ -19,9 +20,8 @@ use Symfony\Component\Messenger\MessageBusInterface;
  * from Symfony Messenger's HandlerFailedException wrapper.
  *
  * @internal
- *
- * @covers \App\Infrastructure\MessageBus\MessengerCommandBus
  */
+#[CoversClass(MessengerCommandBus::class)]
 final class MessengerCommandBusTest extends TestCase
 {
     /**
@@ -41,7 +41,7 @@ final class MessengerCommandBusTest extends TestCase
     public function testItDispatchesCommandSuccessfully(): void
     {
         // Arrange: Create a test command
-        $command = $this->createTestCommand();
+        $command = self::createTestCommand();
 
         // Mock messenger bus to succeed (no exception)
         $this->messengerBus
@@ -58,7 +58,7 @@ final class MessengerCommandBusTest extends TestCase
     public function testItUnwrapsSingleException(): void
     {
         // Arrange: Create a test command and a domain exception
-        $command = $this->createTestCommand();
+        $command = self::createTestCommand();
         $domainException = new \InvalidArgumentException('User already exists');
 
         // Create HandlerFailedException with single wrapped exception
@@ -84,7 +84,7 @@ final class MessengerCommandBusTest extends TestCase
     public function testItPreservesHandlerFailedExceptionWithMultipleWrappedExceptions(): void
     {
         // Arrange: Create a test command and multiple exceptions
-        $command = $this->createTestCommand();
+        $command = self::createTestCommand();
         $exception1 = new \InvalidArgumentException('First error');
         $exception2 = new \RuntimeException('Second error');
 
@@ -107,7 +107,7 @@ final class MessengerCommandBusTest extends TestCase
         $this->commandBus->dispatch($command);
     }
 
-    private function createTestCommand(): CommandInterface
+    private static function createTestCommand(): CommandInterface
     {
         return new class implements CommandInterface {
             public function __construct(

@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Infrastructure\Clock;
 use App\Application\Clock\ClockInterface;
 use App\Infrastructure\Clock\SystemClock;
 use App\Tests\UseCase\FrozenClock;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -16,11 +17,10 @@ use PHPUnit\Framework\TestCase;
  * All implementations of ClockInterface must pass these tests
  * to ensure consistent behavior across adapters.
  *
- * @covers \App\Infrastructure\Clock\SystemClock
- * @covers \App\Tests\UseCase\FrozenClock
- *
  * @internal
  */
+#[CoversClass(SystemClock::class)]
+#[CoversClass(FrozenClock::class)]
 final class ClockContractTest extends TestCase
 {
     #[DataProvider('clockProvider')]

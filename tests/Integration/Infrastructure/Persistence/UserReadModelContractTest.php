@@ -12,6 +12,7 @@ use App\Infrastructure\Projection\UserProjection;
 use App\Tests\UseCase\InMemoryUserReadModel;
 use MongoDB\Client;
 use MongoDB\Collection;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -21,11 +22,10 @@ use PHPUnit\Framework\TestCase;
  * All implementations of UserReadModelInterface must pass these tests
  * to ensure consistent query behavior across adapters.
  *
- * @covers \App\Infrastructure\Persistence\MongoDB\MongoUserReadModel
- * @covers \App\Tests\UseCase\InMemoryUserReadModel
- *
  * @internal
  */
+#[CoversClass(MongoUserReadModel::class)]
+#[CoversClass(InMemoryUserReadModel::class)]
 final class UserReadModelContractTest extends TestCase
 {
     #[DataProvider('readModelProvider')]

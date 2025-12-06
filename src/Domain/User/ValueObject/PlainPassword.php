@@ -9,11 +9,11 @@ use Webmozart\Assert\Assert;
 final readonly class PlainPassword
 {
     private function __construct(
-        private string $value
+        private string $value,
     ) {
         Assert::notEmpty($this->value, 'Password cannot be empty');
 
-        if (trim($this->value) === '') {
+        if (mb_trim($this->value) === '') {
             throw new \InvalidArgumentException('Password cannot contain only whitespace');
         }
 

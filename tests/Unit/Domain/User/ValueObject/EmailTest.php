@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Domain\User\ValueObject;
 
 use App\Domain\User\ValueObject\Email;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \App\Domain\User\ValueObject\Email
- *
  * @internal
  */
+#[CoversClass(Email::class)]
 final class EmailTest extends TestCase
 {
     public function testItCreatesEmailFromValidString(): void

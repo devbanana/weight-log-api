@@ -8,6 +8,7 @@ use App\Application\Security\PasswordHasherInterface;
 use App\Domain\User\ValueObject\PlainPassword;
 use App\Infrastructure\Security\NativePasswordHasher;
 use App\Tests\UseCase\FakePasswordHasher;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -17,11 +18,10 @@ use PHPUnit\Framework\TestCase;
  * All implementations of PasswordHasherInterface must pass these tests
  * to ensure consistent hashing behavior across adapters.
  *
- * @covers \App\Infrastructure\Security\NativePasswordHasher
- * @covers \App\Tests\UseCase\FakePasswordHasher
- *
  * @internal
  */
+#[CoversClass(NativePasswordHasher::class)]
+#[CoversClass(FakePasswordHasher::class)]
 final class PasswordHasherContractTest extends TestCase
 {
     #[DataProvider('hasherProvider')]

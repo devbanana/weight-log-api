@@ -9,7 +9,7 @@ use Webmozart\Assert\Assert;
 final readonly class HashedPassword
 {
     private function __construct(
-        private string $hash
+        private string $hash,
     ) {
         Assert::notEmpty($this->hash, 'Hash cannot be empty');
     }

@@ -42,7 +42,7 @@ final readonly class LoginUserProcessor implements ProcessorInterface
     {
         // 1. Query for auth data by email
         $authData = $this->queryBus->dispatch(
-            new FindUserAuthDataByEmailQuery($data->email)
+            new FindUserAuthDataByEmailQuery($data->email),
         );
 
         if ($authData === null) {
@@ -61,7 +61,7 @@ final readonly class LoginUserProcessor implements ProcessorInterface
 
         // 3. Generate JWT token using Lexik
         $token = $this->jwtManager->create(
-            new SecurityUser($authData->userId, $authData->roles)
+            new SecurityUser($authData->userId, $authData->roles),
         );
 
         return new UserLoginResponse($token);
