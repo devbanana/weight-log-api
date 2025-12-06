@@ -673,6 +673,8 @@ composer fix:cs
 composer deptrac
 ```
 
+**Note on environment variables**: All `test:*` scripts use `env -u` to unset `APP_ENV` and `JWT_*` variables before running. This ensures Symfony's dotenv loads the correct values from `.env.test` rather than inheriting potentially incorrect values from the shell environment (e.g., from tools that auto-import `.env`).
+
 **Note on handler testing**: Command/Query handlers are thin orchestration code. They are tested via Behat use case tests, not PHPUnit. They are excluded from PHPUnit coverage reports.
 
 ### Coverage Policy: 100% for Included Classes
