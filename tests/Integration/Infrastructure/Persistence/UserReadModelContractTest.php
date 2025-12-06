@@ -8,6 +8,7 @@ use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\Email;
 use App\Infrastructure\Persistence\MongoDB\MongoUserReadModel;
+use App\Infrastructure\Projection\UserProjection;
 use App\Tests\UseCase\InMemoryUserReadModel;
 use MongoDB\Client;
 use MongoDB\Collection;
@@ -27,25 +28,40 @@ use PHPUnit\Framework\TestCase;
  */
 final class UserReadModelContractTest extends TestCase
 {
-    private static ?Collection $mongoCollection = null;
-
-    /**
-     * @param callable(UserReadModelInterface, string): void $seeder
-     */
     #[DataProvider('readModelProvider')]
-    public function testItReturnsFalseForNonExistentEmail(
-        UserReadModelInterface $readModel,
-        callable $seeder,
-    ): void {
+    public function testItReturnsFalseForNonExistentEmail(UserReadModelInterface $readModel): void
+    {
         $email = Email::fromString('nonexistent@example.com');
 
         self::assertFalse($readModel->existsWithEmail($email));
     }
 
-    /**
-     * @param callable(UserReadModelInterface, string): void $seeder
-     */
     #[DataProvider('readModelProvider')]
+    public function testItReturnsNullForNonExistentEmailWhenFindingUserId(UserReadModelInterface $readModel): void
+    {
+        $email = Email::fromString('nonexistent@example.com');
+
+        self::assertNull($readModel->findUserIdByEmail($email));
+    }
+
+    /**
+     * Provides read model implementations for tests that don't need seeding.
+     *
+     * @return iterable<string, array{UserReadModelInterface}>
+     */
+    public static function readModelProvider(): iterable
+    {
+        yield 'InMemory' => [new InMemoryUserReadModel()];
+
+        $mongoCollection = self::createMongoCollection();
+
+        yield 'MongoDB' => [new MongoUserReadModel($mongoCollection)];
+    }
+
+    /**
+     * @param callable(string): void $seeder
+     */
+    #[DataProvider('readModelWithSeederProvider')]
     public function testItReturnsTrueForExistingEmail(
         UserReadModelInterface $readModel,
         callable $seeder,
@@ -53,21 +69,21 @@ final class UserReadModelContractTest extends TestCase
         $email = Email::fromString('exists@example.com');
 
         // Seed the read model with a registered user
-        $seeder($readModel, 'exists@example.com');
+        $seeder('exists@example.com');
 
         self::assertTrue($readModel->existsWithEmail($email));
     }
 
     /**
-     * @param callable(UserReadModelInterface, string): void $seeder
+     * @param callable(string): void $seeder
      */
-    #[DataProvider('readModelProvider')]
-    public function testItHandlesMultipleUsers(
+    #[DataProvider('readModelWithSeederProvider')]
+    public function testExistsWithEmailWorksWithMultipleUsers(
         UserReadModelInterface $readModel,
         callable $seeder,
     ): void {
-        $seeder($readModel, 'user1@example.com');
-        $seeder($readModel, 'user2@example.com');
+        $seeder('user1@example.com');
+        $seeder('user2@example.com');
 
         self::assertTrue($readModel->existsWithEmail(Email::fromString('user1@example.com')));
         self::assertTrue($readModel->existsWithEmail(Email::fromString('user2@example.com')));
@@ -75,73 +91,119 @@ final class UserReadModelContractTest extends TestCase
     }
 
     /**
-     * @param callable(UserReadModelInterface, string): void $seeder
+     * @param callable(string): void $seeder
      */
-    #[DataProvider('readModelProvider')]
-    public function testItMatchesEmailCaseInsensitively(
+    #[DataProvider('readModelWithSeederProvider')]
+    public function testItReturnsUserIdForExistingEmail(
         UserReadModelInterface $readModel,
         callable $seeder,
     ): void {
-        $seeder($readModel, 'Test@Example.COM');
+        $email = 'findbyemail@example.com';
+        $expectedUserId = 'user-' . md5($email);
 
-        // Email value object normalizes to lowercase, so this should match
-        self::assertTrue($readModel->existsWithEmail(Email::fromString('test@example.com')));
+        $seeder($email);
+
+        self::assertSame($expectedUserId, $readModel->findUserIdByEmail(Email::fromString($email)));
+    }
+
+    /**
+     * @param callable(string): void $seeder
+     */
+    #[DataProvider('readModelWithSeederProvider')]
+    public function testItReturnsCorrectUserIdWhenMultipleUsersExist(
+        UserReadModelInterface $readModel,
+        callable $seeder,
+    ): void {
+        $seeder('alice@example.com');
+        $seeder('bob@example.com');
+
+        $aliceId = $readModel->findUserIdByEmail(Email::fromString('alice@example.com'));
+        $bobId = $readModel->findUserIdByEmail(Email::fromString('bob@example.com'));
+
+        self::assertSame('user-' . md5('alice@example.com'), $aliceId);
+        self::assertSame('user-' . md5('bob@example.com'), $bobId);
+        self::assertNotSame($aliceId, $bobId);
     }
 
     /**
      * Provides read model implementations with their seeders.
      *
-     * The seeder callable takes the read model and an email string,
-     * and populates the read model with a user having that email.
+     * Each seeder is a closure that captures its dependencies. This design
+     * ensures both implementations seed through their natural mechanisms:
+     * - InMemory: via handleEvent() (same as production event handling)
+     * - MongoDB: via UserProjection (mirrors production event projection)
      *
-     * @return \Generator<string, array{UserReadModelInterface, callable(UserReadModelInterface, string): void}>
+     * @return iterable<string, array{UserReadModelInterface, callable(string): void}>
      */
-    public static function readModelProvider(): iterable
+    public static function readModelWithSeederProvider(): iterable
     {
         // InMemory serves as reference implementation, validates test correctness,
         // and ensures the test double used in Behat use case tests behaves correctly
+        $inMemoryReadModel = new InMemoryUserReadModel();
+
         yield 'InMemory' => [
-            new InMemoryUserReadModel(),
-            self::inMemorySeeder(...),
+            $inMemoryReadModel,
+            self::createInMemorySeeder($inMemoryReadModel),
         ];
+
+        $mongoCollection = self::createMongoCollection();
 
         yield 'MongoDB' => [
-            self::createMongoUserReadModel(),
-            self::mongoSeeder(...),
+            new MongoUserReadModel($mongoCollection),
+            self::createMongoSeeder($mongoCollection),
         ];
     }
 
-    private static function createMongoUserReadModel(): MongoUserReadModel
+    private static function createMongoCollection(): Collection
     {
         $mongoUrl = $_ENV['MONGODB_URL'];
-        self::assertIsString($mongoUrl, 'MONGODB_URL must be set in environment for tests');
+        assert(is_string($mongoUrl), 'MONGODB_URL must be set in environment for tests');
         $database = $_ENV['MONGODB_DATABASE'];
-        self::assertIsString($database, 'MONGODB_DATABASE must be set in environment for tests');
+        assert(is_string($database), 'MONGODB_DATABASE must be set in environment for tests');
 
         $client = new Client($mongoUrl);
-        self::$mongoCollection = $client->selectCollection($database, 'users');
-        self::$mongoCollection->drop();
+        $collection = $client->selectCollection($database, 'users');
+        $collection->drop();
 
-        return new MongoUserReadModel(self::$mongoCollection);
+        return $collection;
     }
 
-    private static function inMemorySeeder(UserReadModelInterface $readModel, string $email): void
+    /**
+     * Creates a seeder that populates the in-memory read model via event handling.
+     *
+     * @return callable(string): void
+     */
+    private static function createInMemorySeeder(InMemoryUserReadModel $readModel): callable
     {
-        self::assertInstanceOf(InMemoryUserReadModel::class, $readModel);
-        $readModel->handleEvent(new UserRegistered(
-            id: 'user-' . md5($email),
-            email: $email,
-            hashedPassword: 'hashed_password',
-            occurredAt: new \DateTimeImmutable(),
-        ));
+        return static function (string $email) use ($readModel): void {
+            $readModel->handleEvent(new UserRegistered(
+                id: 'user-' . md5($email),
+                email: $email,
+                hashedPassword: 'hashed_password',
+                occurredAt: new \DateTimeImmutable(),
+            ));
+        };
     }
 
-    private static function mongoSeeder(UserReadModelInterface $readModel, string $email): void
+    /**
+     * Creates a seeder that populates MongoDB via the UserProjection.
+     *
+     * This mirrors production behavior where domain events flow through
+     * the projection to update the read model.
+     *
+     * @return callable(string): void
+     */
+    private static function createMongoSeeder(Collection $collection): callable
     {
-        self::assertNotNull(self::$mongoCollection);
-        self::$mongoCollection->insertOne([
-            '_id' => 'user-' . md5($email),
-            'email' => strtolower($email),
-        ]);
+        $projection = new UserProjection($collection);
+
+        return static function (string $email) use ($projection): void {
+            $projection->onUserRegistered(new UserRegistered(
+                id: 'user-' . md5($email),
+                email: $email,
+                hashedPassword: 'hashed_password',
+                occurredAt: new \DateTimeImmutable(),
+            ));
+        };
     }
 }

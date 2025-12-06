@@ -20,4 +20,13 @@ interface UserReadModelInterface
      * Used for uniqueness validation during registration.
      */
     public function existsWithEmail(Email $email): bool;
+
+    /**
+     * Find user ID by email.
+     *
+     * Used for looking up user during login.
+     *
+     * @return non-empty-string|null User ID or null if not found
+     */
+    public function findUserIdByEmail(Email $email): ?string;
 }

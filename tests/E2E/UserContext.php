@@ -5,17 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\E2E;
 
 use Behat\Behat\Context\Context;
-use Behat\Behat\Hook\Scope\BeforeScenarioScope;
 use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
 use MongoDB\Client;
 use MongoDB\Database;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\KernelInterface;
-use Webmozart\Assert\Assert;
 
 /**
  * End-to-end context tests the full application stack with real HTTP requests.
@@ -25,6 +22,8 @@ use Webmozart\Assert\Assert;
  */
 final class UserContext implements Context
 {
+    use HttpHelper;
+
     private ?Response $response = null;
     private Database $database;
 
@@ -37,9 +36,8 @@ final class UserContext implements Context
     }
 
     #[BeforeScenario]
-    public function cleanDatabase(BeforeScenarioScope $scope): void
+    public function cleanDatabase(): void
     {
-        // Drop and recreate collections to ensure clean state
         $this->database->dropCollection('events');
         $this->database->dropCollection('users');
     }
@@ -48,12 +46,11 @@ final class UserContext implements Context
     public function aUserExistsWithEmailAndPassword(string $email, string $password): void
     {
         $this->iRegisterWithEmailAndPassword($email, $password);
+        self::assertResponseStatusCode($this->response, 201, 'Created (test setup)');
 
-        Assert::same(
-            $this->response?->getStatusCode(),
-            201,
-            sprintf('Failed to create user for test setup. Response: %s', $this->getResponseContent())
-        );
+        // Shutdown kernel to ensure services are fresh for next request
+        $this->kernel->shutdown();
+        $this->kernel->boot();
 
         $this->response = null;
     }
@@ -61,74 +58,63 @@ final class UserContext implements Context
     #[When('I register with email :email and password :password')]
     public function iRegisterWithEmailAndPassword(string $email, string $password): void
     {
-        $request = Request::create(
-            uri: '/api/auth/register',
-            method: 'POST',
-            server: [
-                'CONTENT_TYPE' => 'application/json',
-                'HTTP_ACCEPT' => 'application/json',
-            ],
-            content: json_encode([
-                'email' => $email,
-                'password' => $password,
-            ], JSON_THROW_ON_ERROR)
-        );
-
-        $this->response = $this->kernel->handle($request);
+        $this->response = $this->makeJsonRequest('POST', '/api/auth/register', [
+            'email' => $email,
+            'password' => $password,
+        ]);
     }
 
     #[Then('I should be registered')]
     public function iShouldBeRegistered(): void
     {
-        Assert::notNull($this->response, 'No response received');
-        Assert::same(
-            $this->response->getStatusCode(),
-            201,
-            sprintf('Expected 201 status code. Response: %s', $this->getResponseContent())
-        );
+        self::assertResponseStatusCode($this->response, 201, 'Created');
     }
 
     #[Then('registration should fail due to duplicate email')]
     public function registrationShouldFailDueToDuplicateEmail(): void
     {
-        Assert::notNull($this->response, 'No response received');
-        Assert::same(
-            $this->response->getStatusCode(),
-            409,
-            sprintf('Expected 409 Conflict. Response: %s', $this->getResponseContent())
-        );
+        self::assertResponseStatusCode($this->response, 409, 'Conflict');
     }
 
     #[Then('registration should fail due to invalid email format')]
     public function registrationShouldFailDueToInvalidEmailFormat(): void
     {
-        Assert::notNull($this->response, 'No response received');
-        Assert::same(
-            $this->response->getStatusCode(),
-            422,
-            sprintf('Expected 422 Unprocessable Entity. Response: %s', $this->getResponseContent())
-        );
+        self::assertResponseStatusCode($this->response, 422, 'Unprocessable Entity');
     }
 
     #[Then('registration should fail due to invalid password')]
     public function registrationShouldFailDueToInvalidPassword(): void
     {
-        Assert::notNull($this->response, 'No response received');
-        Assert::same(
-            $this->response->getStatusCode(),
-            422,
-            sprintf('Expected 422 Unprocessable Entity. Response: %s', $this->getResponseContent())
-        );
+        self::assertResponseStatusCode($this->response, 422, 'Unprocessable Entity');
     }
 
-    private function getResponseContent(): string
+    #[When('I log in with email :email and password :password')]
+    public function iLogInWithEmailAndPassword(string $email, string $password): void
     {
-        $content = $this->response?->getContent();
+        $this->response = $this->makeJsonRequest('POST', '/api/auth/login', [
+            'email' => $email,
+            'password' => $password,
+        ]);
+    }
 
-        if ($content === false || $content === null) {
-            return 'No content';
-        }
+    #[Then('I should be logged in')]
+    #[Then('I should receive an authentication token')]
+    public function iShouldBeLoggedIn(): void
+    {
+        self::assertResponseStatusCode($this->response, 200, 'OK');
+        self::assertResponseContainsToken($this->response);
+    }
 
-        return $content;
+    #[Then('login should fail due to invalid credentials')]
+    public function loginShouldFailDueToInvalidCredentials(): void
+    {
+        self::assertResponseStatusCode($this->response, 401, 'Unauthorized');
+    }
+
+    #[Then('login should fail due to invalid email format')]
+    #[Then('login should fail due to invalid password')]
+    public function loginShouldFailDueToValidationError(): void
+    {
+        self::assertResponseStatusCode($this->response, 422, 'Unprocessable Entity');
     }
 }

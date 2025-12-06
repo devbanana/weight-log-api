@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\UseCase;
 
+use App\Application\User\Command\LoginCommand;
 use App\Application\User\Command\RegisterUserCommand;
+use App\Application\User\Query\FindUserAuthDataByEmailQuery;
+use App\Domain\User\Event\UserLoggedIn;
+use App\Domain\User\Exception\CouldNotAuthenticate;
 use App\Domain\User\Exception\UserAlreadyExistsException;
 use App\Domain\User\User;
 use Behat\Behat\Context\Context;
@@ -16,7 +20,7 @@ use Webmozart\Assert\Assert;
 
 /**
  * Use case context tests the application core using TestServiceContainer with spy objects.
- * This tests the business logic without touching real infrastructure (database, HTTP, etc).
+ * This tests the business logic without touching real infrastructure (database, HTTP, etc.).
  *
  * @internal
  */
@@ -24,6 +28,7 @@ final class UserContext implements Context
 {
     private TestContainer $container;
     private ?string $registeredUserId = null;
+    private ?string $loggedInUserId = null;
     private ?\Throwable $caughtException = null;
 
     public function __construct()
@@ -44,7 +49,7 @@ final class UserContext implements Context
         );
 
         try {
-            $this->container->getCommandBus()->dispatch($command);
+            $this->container->commandBus->dispatch($command);
         } catch (\Throwable $e) {
             $this->caughtException = $e;
         }
@@ -57,7 +62,7 @@ final class UserContext implements Context
         Assert::string($this->registeredUserId, 'No user ID was registered');
 
         // Verify user exists by checking events were stored and can be reconstituted
-        $events = $this->container->getEventStore()->getEvents($this->registeredUserId, User::class);
+        $events = $this->container->eventStore->getEvents($this->registeredUserId, User::class);
         Assert::notEmpty($events, 'No events were stored for the user');
 
         // Verify we can reconstitute the user from events (would throw if invalid)
@@ -73,7 +78,7 @@ final class UserContext implements Context
             password: $password,
         );
 
-        $this->container->getCommandBus()->dispatch($command);
+        $this->container->commandBus->dispatch($command);
     }
 
     #[Then('registration should fail due to duplicate email')]
@@ -87,7 +92,8 @@ final class UserContext implements Context
     }
 
     #[Then('registration should fail due to invalid email format')]
-    public function registrationShouldFailDueToInvalidEmailFormat(): void
+    #[Then('registration should fail due to invalid password')]
+    public function registrationShouldFailDueToValidationError(): void
     {
         Assert::isInstanceOf(
             $this->caughtException,
@@ -96,13 +102,60 @@ final class UserContext implements Context
         );
     }
 
-    #[Then('registration should fail due to invalid password')]
-    public function registrationShouldFailDueToInvalidPassword(): void
+    #[When('I log in with email :email and password :password')]
+    public function iLogInWithEmailAndPassword(string $email, string $password): void
+    {
+        try {
+            $authData = $this->container->queryBus->dispatch(
+                new FindUserAuthDataByEmailQuery($email)
+            );
+
+            if ($authData === null) {
+                // User not found - let Then step handle this via loggedInUserId check
+                return;
+            }
+
+            $this->loggedInUserId = $authData->userId;
+
+            $this->container->commandBus->dispatch(new LoginCommand(
+                userId: $authData->userId,
+                password: $password,
+            ));
+        } catch (\Throwable $e) {
+            $this->caughtException = $e;
+        }
+    }
+
+    #[Then('I should be logged in')]
+    public function iShouldBeLoggedIn(): void
+    {
+        Assert::null($this->caughtException, 'Login should not have thrown an exception');
+        Assert::notNull($this->loggedInUserId, 'No user was logged in');
+
+        // Verify UserLoggedIn event was recorded
+        $events = $this->container->eventStore->getEvents($this->loggedInUserId, User::class);
+        $loginEvents = array_filter($events, static fn ($e) => $e instanceof UserLoggedIn);
+        Assert::notEmpty($loginEvents, 'UserLoggedIn event should have been recorded');
+    }
+
+    #[Then('login should fail due to invalid credentials')]
+    public function loginShouldFailDueToInvalidCredentials(): void
+    {
+        // Login fails if: user not found (loggedInUserId is null) OR wrong password (exception)
+        Assert::true(
+            $this->loggedInUserId === null || $this->caughtException instanceof CouldNotAuthenticate,
+            'Expected login to fail due to invalid credentials',
+        );
+    }
+
+    #[Then('login should fail due to invalid email format')]
+    #[Then('login should fail due to invalid password')]
+    public function loginShouldFailDueToValidationError(): void
     {
         Assert::isInstanceOf(
             $this->caughtException,
             \InvalidArgumentException::class,
-            'Expected InvalidArgumentException for invalid password',
+            'Expected InvalidArgumentException to be thrown',
         );
     }
 }

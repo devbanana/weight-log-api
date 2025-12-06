@@ -7,9 +7,12 @@ namespace App\Domain\User;
 use App\Domain\Common\Aggregate\EventSourcedAggregateInterface;
 use App\Domain\Common\Aggregate\RecordsEvents;
 use App\Domain\Common\Event\DomainEventInterface;
+use App\Domain\User\Event\UserLoggedIn;
 use App\Domain\User\Event\UserRegistered;
+use App\Domain\User\Exception\CouldNotAuthenticate;
 use App\Domain\User\ValueObject\Email;
 use App\Domain\User\ValueObject\HashedPassword;
+use App\Domain\User\ValueObject\PlainPassword;
 use App\Domain\User\ValueObject\UserId;
 
 /**
@@ -52,6 +55,18 @@ final class User implements EventSourcedAggregateInterface
         return $user;
     }
 
+    public function login(PlainPassword $password, \DateTimeImmutable $now): void
+    {
+        if (!$this->password->verify($password)) {
+            throw CouldNotAuthenticate::becauseInvalidCredentials();
+        }
+
+        $this->recordThat(new UserLoggedIn(
+            $this->id->asString(),
+            $now,
+        ));
+    }
+
     /**
      * Reconstitute a user from an event stream.
      *
@@ -73,6 +88,7 @@ final class User implements EventSourcedAggregateInterface
     {
         match ($event::class) {
             UserRegistered::class => $this->applyUserRegistered($event),
+            UserLoggedIn::class => $this->applyUserLoggedIn($event),
             default => throw new \InvalidArgumentException(sprintf(
                 'Unknown event type "%s" for User aggregate',
                 $event::class,
@@ -86,5 +102,10 @@ final class User implements EventSourcedAggregateInterface
         $this->email = Email::fromString($event->email);
         $this->password = HashedPassword::fromHash($event->hashedPassword);
         $this->registeredAt = $event->occurredAt;
+    }
+
+    private function applyUserLoggedIn(UserLoggedIn $event): void
+    {
+        // Login events don't modify aggregate state beyond what's tracked in the event store
     }
 }

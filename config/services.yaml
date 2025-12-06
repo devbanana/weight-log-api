@@ -24,6 +24,15 @@ services:
         tags:
             - { name: messenger.message_handler, bus: command.bus }
 
+    App\Application\User\Command\LoginHandler:
+        tags:
+            - { name: messenger.message_handler, bus: command.bus }
+
+    # Query Handlers (routed to query.bus)
+    App\Application\User\Query\FindUserAuthDataByEmailHandler:
+        tags:
+            - { name: messenger.message_handler, bus: query.bus }
+
     # MongoDB Client
     MongoDB\Client:
         arguments:
@@ -81,6 +90,14 @@ services:
 
     App\Application\MessageBus\CommandBusInterface:
         alias: App\Infrastructure\MessageBus\MessengerCommandBus
+
+    # Query Bus (wraps Symfony Messenger)
+    App\Infrastructure\MessageBus\MessengerQueryBus:
+        arguments:
+            $queryBus: '@query.bus'
+
+    App\Application\MessageBus\QueryBusInterface:
+        alias: App\Infrastructure\MessageBus\MessengerQueryBus
 
     # Password Hasher
     App\Application\Security\PasswordHasherInterface:

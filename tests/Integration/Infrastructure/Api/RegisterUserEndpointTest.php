@@ -31,6 +31,8 @@ use Symfony\Component\Uid\UuidV7;
  */
 final class RegisterUserEndpointTest extends WebTestCase
 {
+    use HttpHelper;
+
     private KernelBrowser $client;
 
     /**
@@ -66,15 +68,13 @@ final class RegisterUserEndpointTest extends WebTestCase
             }))
         ;
 
-        // Act: POST to registration endpoint
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
+        // Act
+        $this->postJson('/api/auth/register', [
             'email' => 'test@example.com',
             'password' => 'SecurePass123!',
-        ], JSON_THROW_ON_ERROR));
+        ]);
 
-        // Assert: Returns 201 Created
+        // Assert
         self::assertResponseStatusCodeSame(201);
     }
 
@@ -93,15 +93,13 @@ final class RegisterUserEndpointTest extends WebTestCase
             }))
         ;
 
-        // Act: Make registration request
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
+        // Act
+        $this->postJson('/api/auth/register', [
             'email' => 'user@example.com',
             'password' => 'SecurePass123!',
-        ], JSON_THROW_ON_ERROR));
+        ]);
 
-        // Assert: User ID is a valid UUID v7
+        // Assert
         self::assertResponseStatusCodeSame(201);
         self::assertNotNull($capturedUserId);
         self::assertTrue(Uuid::isValid($capturedUserId), 'userId should be a valid UUID');
@@ -122,154 +120,104 @@ final class RegisterUserEndpointTest extends WebTestCase
             }))
         ;
 
-        // Act: POST with uppercase email
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
+        // Act
+        $this->postJson('/api/auth/register', [
             'email' => 'TEST@EXAMPLE.COM',
             'password' => 'SecurePass123!',
-        ], JSON_THROW_ON_ERROR));
+        ]);
 
-        // Assert: Returns 201 Created (normalization happens in domain layer)
+        // Assert (normalization happens in domain layer)
         self::assertResponseStatusCodeSame(201);
     }
 
     public function testItReturns422ForInvalidEmailFormat(): void
     {
-        // Arrange: Command bus should never be called for invalid input
-        $this->commandBus
-            ->expects(self::never())
-            ->method('dispatch')
-        ;
+        // Arrange
+        $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act: POST with invalid email
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
+        // Act
+        $this->postJson('/api/auth/register', [
             'email' => 'not-an-email',
             'password' => 'SecurePass123!',
-        ], JSON_THROW_ON_ERROR));
+        ]);
 
-        // Assert: Returns 422 Unprocessable Entity
+        // Assert
         self::assertResponseStatusCodeSame(422);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
 
-        $content = $this->client->getResponse()->getContent();
-        self::assertNotFalse($content);
-
-        $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
-        assert(is_array($data));
-
+        $data = $this->getJsonResponse();
         self::assertArrayHasKey('violations', $data);
         $violations = $data['violations'];
         assert(is_array($violations));
         self::assertCount(1, $violations);
         assert(is_array($violations[0]));
-        self::assertArrayHasKey('propertyPath', $violations[0]);
         self::assertSame('email', $violations[0]['propertyPath']);
     }
 
     public function testItReturns422ForEmptyEmail(): void
     {
-        // Arrange: Command bus should never be called for invalid input
-        $this->commandBus
-            ->expects(self::never())
-            ->method('dispatch')
-        ;
+        // Arrange
+        $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act: POST with empty email
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
-            'email' => '',
-            'password' => 'SecurePass123!',
-        ], JSON_THROW_ON_ERROR));
+        // Act
+        $this->postJson('/api/auth/register', ['email' => '', 'password' => 'SecurePass123!']);
 
-        // Assert: Returns 422 Unprocessable Entity
+        // Assert
         self::assertResponseStatusCodeSame(422);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
     }
 
     public function testItReturns400ForMissingEmail(): void
     {
-        // Arrange: Command bus should never be called for invalid input
-        $this->commandBus
-            ->expects(self::never())
-            ->method('dispatch')
-        ;
+        // Arrange
+        $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act: POST with no email field
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
-            'password' => 'SecurePass123!',
-        ], JSON_THROW_ON_ERROR));
+        // Act
+        $this->postJson('/api/auth/register', ['password' => 'SecurePass123!']);
 
-        // Assert: Returns 400 Bad Request (API Platform deserialization error)
+        // Assert (API Platform deserialization error)
         self::assertResponseStatusCodeSame(400);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
     }
 
     public function testItReturns400ForMissingPassword(): void
     {
-        // Arrange: Command bus should never be called for invalid input
-        $this->commandBus
-            ->expects(self::never())
-            ->method('dispatch')
-        ;
+        // Arrange
+        $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act: POST with no password field
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
-            'email' => 'test@example.com',
-        ], JSON_THROW_ON_ERROR));
+        // Act
+        $this->postJson('/api/auth/register', ['email' => 'test@example.com']);
 
-        // Assert: Returns 400 Bad Request (API Platform deserialization error)
+        // Assert (API Platform deserialization error)
         self::assertResponseStatusCodeSame(400);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
     }
 
     public function testItReturns422ForPasswordTooShort(): void
     {
-        // Arrange: Command bus should never be called for invalid input
-        $this->commandBus
-            ->expects(self::never())
-            ->method('dispatch')
-        ;
+        // Arrange
+        $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act: POST with password that's too short
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
-            'email' => 'test@example.com',
-            'password' => 'short',
-        ], JSON_THROW_ON_ERROR));
+        // Act
+        $this->postJson('/api/auth/register', ['email' => 'test@example.com', 'password' => 'short']);
 
-        // Assert: Returns 422 Unprocessable Entity
+        // Assert
         self::assertResponseStatusCodeSame(422);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
 
-        $content = $this->client->getResponse()->getContent();
-        self::assertNotFalse($content);
-
-        $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
-        assert(is_array($data));
-
+        $data = $this->getJsonResponse();
         self::assertArrayHasKey('violations', $data);
         $violations = $data['violations'];
         assert(is_array($violations));
         self::assertCount(1, $violations);
         assert(is_array($violations[0]));
-        self::assertArrayHasKey('propertyPath', $violations[0]);
         self::assertSame('password', $violations[0]['propertyPath']);
-        self::assertArrayHasKey('message', $violations[0]);
         self::assertSame('Password must be at least 8 characters long', $violations[0]['message']);
     }
 
     public function testItReturns409WhenUserAlreadyExists(): void
     {
-        // Arrange: Command bus throws UserAlreadyExistsException
+        // Arrange
         $this->commandBus
             ->expects(self::once())
             ->method('dispatch')
@@ -278,25 +226,17 @@ final class RegisterUserEndpointTest extends WebTestCase
             ))
         ;
 
-        // Act: POST with email that already exists
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
+        // Act
+        $this->postJson('/api/auth/register', [
             'email' => 'duplicate@example.com',
             'password' => 'SecurePass123!',
-        ], JSON_THROW_ON_ERROR));
+        ]);
 
-        // Assert: Returns 409 Conflict
+        // Assert
         self::assertResponseStatusCodeSame(409);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
 
-        $content = $this->client->getResponse()->getContent();
-        self::assertNotFalse($content);
-
-        $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
-        assert(is_array($data));
-
-        // Verify error details
+        $data = $this->getJsonResponse();
         self::assertArrayHasKey('title', $data);
         self::assertArrayHasKey('detail', $data);
         $detail = $data['detail'];
@@ -306,73 +246,49 @@ final class RegisterUserEndpointTest extends WebTestCase
 
     public function testItReturns400ForNonStringEmail(): void
     {
-        // Arrange: Command bus should never be called for invalid input
-        $this->commandBus
-            ->expects(self::never())
-            ->method('dispatch')
-        ;
+        // Arrange
+        $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act: POST with integer as email
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
-            'email' => 12345,
-        ], JSON_THROW_ON_ERROR));
+        // Act (type mismatch during deserialization)
+        $this->postJson('/api/auth/register', ['email' => 12345]);
 
-        // Assert: Returns 400 Bad Request (type mismatch during deserialization)
+        // Assert
         self::assertResponseStatusCodeSame(400);
     }
 
     public function testItReturns400ForNullEmail(): void
     {
-        // Arrange: Command bus should never be called for invalid input
-        $this->commandBus
-            ->expects(self::never())
-            ->method('dispatch')
-        ;
+        // Arrange
+        $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act: POST with null as email
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
-            'email' => null,
-        ], JSON_THROW_ON_ERROR));
+        // Act (type mismatch during deserialization)
+        $this->postJson('/api/auth/register', ['email' => null]);
 
-        // Assert: Returns 400 Bad Request (type mismatch during deserialization)
+        // Assert
         self::assertResponseStatusCodeSame(400);
     }
 
     public function testItReturns400ForMalformedJson(): void
     {
-        // Arrange: Command bus should never be called for malformed requests
-        $this->commandBus
-            ->expects(self::never())
-            ->method('dispatch')
-        ;
+        // Arrange
+        $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act: POST with malformed JSON
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], '{invalid json}');
+        // Act
+        $this->postJson('/api/auth/register', '{invalid json}');
 
-        // Assert: Returns 400 Bad Request
+        // Assert
         self::assertResponseStatusCodeSame(400);
     }
 
     public function testItReturns415ForWrongContentType(): void
     {
-        // Arrange: Command bus should never be called for wrong content type
-        $this->commandBus
-            ->expects(self::never())
-            ->method('dispatch')
-        ;
+        // Arrange
+        $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act: POST with form data instead of JSON
-        $this->client->request('POST', '/api/auth/register', [
-            'email' => 'test@example.com',
-        ]);
+        // Act (form data instead of JSON)
+        $this->client->request('POST', '/api/auth/register', ['email' => 'test@example.com']);
 
-        // Assert: Returns 415 Unsupported Media Type
+        // Assert
         self::assertResponseStatusCodeSame(415);
     }
 }
