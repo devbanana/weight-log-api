@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\UseCase;
 
 use App\Application\MessageBus\CommandBusInterface;
-use App\Application\MessageBus\CommandHandlerInterface;
 use App\Application\MessageBus\CommandInterface;
 
 /**
@@ -18,17 +17,19 @@ use App\Application\MessageBus\CommandInterface;
 final class InMemoryCommandBus implements CommandBusInterface
 {
     /**
-     * @var array<class-string<CommandInterface>, CommandHandlerInterface<CommandInterface>>
+     * @var array<class-string<CommandInterface>, object>
      */
     private array $handlers = [];
 
     /**
-     * @template TCommand of CommandInterface
+     * Register a handler for a command class.
      *
-     * @param class-string<TCommand>            $commandClass
-     * @param CommandHandlerInterface<TCommand> $handler
+     * The handler must be an invokable object that accepts the specific command type.
+     *
+     * @param class-string<CommandInterface> $commandClass
+     * @param object                         $handler      An invokable handler (has __invoke method)
      */
-    public function register(string $commandClass, CommandHandlerInterface $handler): void
+    public function register(string $commandClass, object $handler): void
     {
         $this->handlers[$commandClass] = $handler;
     }
@@ -42,6 +43,8 @@ final class InMemoryCommandBus implements CommandBusInterface
             throw new \RuntimeException("No handler registered for command: {$commandClass}");
         }
 
-        ($this->handlers[$commandClass])($command);
+        $handler = $this->handlers[$commandClass];
+        assert(is_callable($handler));
+        $handler($command);
     }
 }

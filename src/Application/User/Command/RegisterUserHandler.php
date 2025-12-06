@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Application\User\Command;
 
 use App\Application\Clock\ClockInterface;
-use App\Application\MessageBus\CommandHandlerInterface;
-use App\Application\MessageBus\CommandInterface;
 use App\Application\Security\PasswordHasherInterface;
 use App\Domain\Common\EventStore\EventStoreInterface;
 use App\Domain\User\Exception\UserAlreadyExistsException;
@@ -20,10 +18,8 @@ use App\Domain\User\ValueObject\UserId;
  * Handler for RegisterUserCommand.
  *
  * Orchestrates the user registration use case.
- *
- * @implements CommandHandlerInterface<RegisterUserCommand>
  */
-final readonly class RegisterUserHandler implements CommandHandlerInterface
+final readonly class RegisterUserHandler
 {
     public function __construct(
         private EventStoreInterface $eventStore,
@@ -33,8 +29,7 @@ final readonly class RegisterUserHandler implements CommandHandlerInterface
     ) {
     }
 
-    #[\Override]
-    public function __invoke(CommandInterface $command): void
+    public function __invoke(RegisterUserCommand $command): void
     {
         $email = Email::fromString($command->email);
 
