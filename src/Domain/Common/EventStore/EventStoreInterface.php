@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Common\EventStore;
 
 use App\Domain\Common\Event\DomainEventInterface;
+use App\Domain\Common\Exception\ConcurrencyException;
 
 /**
  * Port for event storage.

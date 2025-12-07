@@ -11,9 +11,12 @@ use App\Application\User\Query\FindUserAuthDataByEmailQuery;
 use App\Application\User\Query\UserAuthData;
 use App\Domain\User\Exception\CouldNotAuthenticate;
 use App\Infrastructure\Api\Resource\UserLoginResource;
+use App\Infrastructure\Api\Resource\UserLoginResponse;
 use App\Infrastructure\Api\State\LoginUserProcessor;
+use App\Infrastructure\Security\SecurityUser;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -29,6 +32,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
  */
 #[CoversClass(UserLoginResource::class)]
 #[CoversClass(LoginUserProcessor::class)]
+#[CoversClass(UserLoginResponse::class)]
+#[UsesClass(SecurityUser::class)]
 final class LoginUserEndpointTest extends WebTestCase
 {
     use HttpHelper;

@@ -14,12 +14,17 @@ use App\Domain\User\ValueObject\HashedPassword;
 use App\Domain\User\ValueObject\PlainPassword;
 use App\Domain\User\ValueObject\UserId;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
 /**
  * @internal
  */
 #[CoversClass(User::class)]
+#[UsesClass(UserId::class)]
+#[UsesClass(Email::class)]
+#[UsesClass(HashedPassword::class)]
+#[UsesClass(PlainPassword::class)]
 final class UserTest extends TestCase
 {
     public function testItRecordsUserRegisteredEvent(): void

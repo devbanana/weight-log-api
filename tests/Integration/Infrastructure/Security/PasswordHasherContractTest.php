@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Infrastructure\Security;
 
 use App\Application\Security\PasswordHasherInterface;
+use App\Domain\User\ValueObject\HashedPassword;
 use App\Domain\User\ValueObject\PlainPassword;
 use App\Infrastructure\Security\NativePasswordHasher;
 use App\Tests\UseCase\FakePasswordHasher;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -21,7 +23,8 @@ use PHPUnit\Framework\TestCase;
  * @internal
  */
 #[CoversClass(NativePasswordHasher::class)]
-#[CoversClass(FakePasswordHasher::class)]
+#[CoversClass(HashedPassword::class)]
+#[UsesClass(PlainPassword::class)]
 final class PasswordHasherContractTest extends TestCase
 {
     #[DataProvider('hasherProvider')]

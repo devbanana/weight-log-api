@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Infrastructure\Persistence;
 
 use App\Domain\Common\Event\DomainEventInterface;
-use App\Domain\Common\EventStore\ConcurrencyException;
 use App\Domain\Common\EventStore\EventStoreInterface;
+use App\Domain\Common\Exception\ConcurrencyException;
 use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\User;
 use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
@@ -31,7 +31,6 @@ use Symfony\Component\Serializer\Serializer;
  * @internal
  */
 #[CoversClass(MongoEventStore::class)]
-#[CoversClass(InMemoryEventStore::class)]
 final class EventStoreContractTest extends TestCase
 {
     private const string AGGREGATE_TYPE = User::class;

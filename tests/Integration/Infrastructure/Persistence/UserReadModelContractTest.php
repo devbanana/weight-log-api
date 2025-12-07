@@ -14,6 +14,7 @@ use MongoDB\Client;
 use MongoDB\Collection;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -25,7 +26,8 @@ use PHPUnit\Framework\TestCase;
  * @internal
  */
 #[CoversClass(MongoUserReadModel::class)]
-#[CoversClass(InMemoryUserReadModel::class)]
+#[UsesClass(Email::class)]
+#[UsesClass(UserProjection::class)]
 final class UserReadModelContractTest extends TestCase
 {
     #[DataProvider('readModelProvider')]

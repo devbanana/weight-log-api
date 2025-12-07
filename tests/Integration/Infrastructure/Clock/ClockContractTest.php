@@ -20,7 +20,6 @@ use PHPUnit\Framework\TestCase;
  * @internal
  */
 #[CoversClass(SystemClock::class)]
-#[CoversClass(FrozenClock::class)]
 final class ClockContractTest extends TestCase
 {
     #[DataProvider('clockProvider')]

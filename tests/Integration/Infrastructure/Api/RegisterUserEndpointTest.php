@@ -8,8 +8,10 @@ use App\Application\MessageBus\CommandBusInterface;
 use App\Application\User\Command\RegisterUserCommand;
 use App\Domain\User\Exception\UserAlreadyExistsException;
 use App\Domain\User\ValueObject\Email;
+use App\Infrastructure\Api\Resource\UserRegistrationResource;
 use App\Infrastructure\Api\State\RegisterUserProcessor;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -30,6 +32,8 @@ use Symfony\Component\Uid\UuidV7;
  * @internal
  */
 #[CoversClass(RegisterUserProcessor::class)]
+#[CoversClass(UserRegistrationResource::class)]
+#[UsesClass(Email::class)]
 final class RegisterUserEndpointTest extends WebTestCase
 {
     use HttpHelper;

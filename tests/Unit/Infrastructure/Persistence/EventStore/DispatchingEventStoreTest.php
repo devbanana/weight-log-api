@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Infrastructure\Persistence\EventStore;
 
 use App\Domain\Common\Event\DomainEventInterface;
-use App\Domain\Common\EventStore\ConcurrencyException;
 use App\Domain\Common\EventStore\EventStoreInterface;
+use App\Domain\Common\Exception\ConcurrencyException;
 use App\Domain\User\Event\UserRegistered;
 use App\Infrastructure\Persistence\EventStore\DispatchingEventStore;
 use PHPUnit\Framework\Attributes\CoversClass;

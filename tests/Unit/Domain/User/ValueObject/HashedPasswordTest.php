@@ -8,12 +8,14 @@ use App\Domain\User\ValueObject\HashedPassword;
 use App\Domain\User\ValueObject\PlainPassword;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
 /**
  * @internal
  */
 #[CoversClass(HashedPassword::class)]
+#[UsesClass(PlainPassword::class)]
 final class HashedPasswordTest extends TestCase
 {
     public function testItFailsWithEmptyHash(): void

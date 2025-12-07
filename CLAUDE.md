@@ -535,7 +535,7 @@ All classes included in PHPUnit coverage must have **100% test coverage**. This 
 
 - If a class should be tested → it must have 100% coverage
 - If a class shouldn't be tested → add it to the exclusion list in `phpunit.dist.xml`
-- If trying to test a method within a class adds no value, ignore the method with `@codeCoverageIgnore` (rare case; see App\Infrastructure\Security\SecurityUser::eraseCredentials() as an example)
+- If trying to test a method within a class adds no value, ignore the method with `@codeCoverageIgnore` (rare cases: empty constructors with promoted properties, framework boilerplate like `SecurityUser::eraseCredentials()`)
 
 **Currently excluded from coverage** (with rationale):
 

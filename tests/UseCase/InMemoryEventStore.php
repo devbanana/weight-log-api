@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\UseCase;
 
 use App\Domain\Common\Event\DomainEventInterface;
-use App\Domain\Common\EventStore\ConcurrencyException;
 use App\Domain\Common\EventStore\EventStoreInterface;
+use App\Domain\Common\Exception\ConcurrencyException;
 
 /**
  * In-memory implementation of EventStore for testing.

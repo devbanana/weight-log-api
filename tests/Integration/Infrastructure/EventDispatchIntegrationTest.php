@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Infrastructure;
 
 use App\Domain\Common\EventStore\EventStoreInterface;
+use App\Domain\Common\Exception\ConcurrencyException;
 use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\User;
 use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\Email;
 use App\Infrastructure\Persistence\EventStore\DispatchingEventStore;
+use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
+use App\Infrastructure\Persistence\MongoDB\MongoUserReadModel;
 use App\Infrastructure\Projection\UserProjection;
 use MongoDB\Client;
 use MongoDB\Collection;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -29,7 +33,10 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  * @internal
  */
 #[CoversClass(DispatchingEventStore::class)]
-#[CoversClass(UserProjection::class)]
+#[UsesClass(Email::class)]
+#[UsesClass(MongoEventStore::class)]
+#[UsesClass(MongoUserReadModel::class)]
+#[UsesClass(UserProjection::class)]
 final class EventDispatchIntegrationTest extends KernelTestCase
 {
     private EventStoreInterface $eventStore;

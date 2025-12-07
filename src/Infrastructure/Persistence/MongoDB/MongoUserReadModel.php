@@ -13,6 +13,9 @@ use MongoDB\Collection;
  */
 final readonly class MongoUserReadModel implements UserReadModelInterface
 {
+    /**
+     * @codeCoverageIgnore Empty constructor
+     */
     public function __construct(
         private Collection $collection,
     ) {

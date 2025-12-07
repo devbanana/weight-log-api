@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Common\EventStore;
+namespace App\Domain\Common\Exception;
 
 /**
  * Thrown when an optimistic concurrency conflict is detected.

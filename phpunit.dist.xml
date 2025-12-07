@@ -48,6 +48,7 @@
             <directory>src/Application/*/Query</directory>
             <directory>src/Domain/*/Event</directory>
             <directory>src/Domain/*/Exception</directory>
+            <directory>src/Domain/Common/Exception</directory>
         </exclude>
 
         <deprecationTrigger>
