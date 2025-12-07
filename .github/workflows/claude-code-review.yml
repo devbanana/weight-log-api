@@ -48,6 +48,8 @@ jobs:
           JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
           JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}
           JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
+          DEFAULT_URI=http://localhost
+          CORS_ALLOW_ORIGIN='^https?://localhost(:[0-9]+)?$'
           EOF
           sed -i 's/^[[:space:]]*//' .env
 
