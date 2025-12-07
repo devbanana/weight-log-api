@@ -40,8 +40,21 @@ jobs:
           extensions: mongodb
           tools: composer:v2
 
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          APP_ENV=test
+          APP_SECRET=${{ secrets.APP_SECRET }}
+          MONGODB_URL=${{ secrets.MONGODB_URL }}
+          MONGODB_DATABASE=${{ secrets.MONGODB_DATABASE }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}
+          JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
+          EOF
+          sed -i 's/^[[:space:]]*//' .env
+
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-scripts
+        run: composer install --prefer-dist --no-progress
 
       - name: Run PHPStan
         run: composer test:types
