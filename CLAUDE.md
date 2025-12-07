@@ -137,55 +137,82 @@ Aggregates derive state from domain events, not direct property assignment:
 - **CQRS split** - Commands use EventStore, Queries use read model projections
 
 ```php
-// Aggregate implements EventSourcedAggregateInterface
 final class User implements EventSourcedAggregateInterface
 {
     use RecordsEvents;
 
-    public static function register(
-        UserId $id,
-        Email $email,
-        HashedPassword $password,
-        \DateTimeImmutable $registeredAt,
-    ): self {
+    private UserId $id;
+    private Email $email;
+
+    private function __construct() {} // State set via apply methods
+
+    public static function register(UserId $id, Email $email, \DateTimeImmutable $at): self
+    {
         $user = new self();
-        $user->recordThat(new UserRegistered(
-            $id->asString(),
-            $email->asString(),
-            $password->asString(),
-            $registeredAt,
-        ));
+        $user->recordThat(new UserRegistered($id->asString(), $email->asString(), $at));
         return $user;
     }
 
-    public static function reconstitute(array $events): static { /* replay events */ }
-    private function apply(DomainEventInterface $event): void { /* update state */ }
+    public function changeEmail(Email $newEmail, \DateTimeImmutable $at): void
+    {
+        $this->recordThat(new EmailChanged($this->id->asString(), $newEmail->asString(), $at));
+    }
+
+    public static function reconstitute(array $events): static
+    {
+        $user = new self();
+        foreach ($events as $event) {
+            $user->apply($event);
+        }
+
+        return $user;
+    }
+
+    private function apply(DomainEventInterface $event): void
+    {
+        match ($event::class) {
+            UserRegistered::class => $this->applyUserRegistered($event),
+            EmailChanged::class => $this->applyEmailChanged($event),
+            default => throw new \InvalidArgumentException("Unknown event: {$event::class}"),
+        };
+    }
+
+    private function applyUserRegistered(UserRegistered $event): void
+    {
+        $this->id = UserId::fromString($event->id);
+        $this->email = Email::fromString($event->email);
+    }
+
+    private function applyEmailChanged(EmailChanged $event): void
+    {
+        $this->email = Email::fromString($event->newEmail);
+    }
 }
 ```
 
-### 6. PHP 8.4 Interface Properties
+### 6. Do Not Use Getter Methods
 
-Use PHP 8.4 interface properties instead of methods for simple contracts:
+Instead of using getter methods, use readonly properties or PHP 8.4 property hooks.
 
 ```php
-// Interface defines required properties
-interface DomainEventInterface
+class Foo
 {
-    public string $id { get; }
-    public \DateTimeImmutable $occurredAt { get; }
-}
+    // ❌ Avoid getter methods
+    private string $bar;
+    public function getBar(): string
+    {
+        return $this->bar;
+    }
 
-// Implementation satisfies interface with public readonly properties
-final readonly class UserRegistered implements DomainEventInterface
-{
-    public function __construct(
-        public string $id,
-        public string $email,
-        public string $passwordHash,
-        public \DateTimeImmutable $occurredAt,
-    ) {}
+    // ✅ Prefer readonly property
+    public readonly string $baz;
+
+    // ✅ Or use property hooks for computed values or when a private setter is needed
+    public private(set) string $qux;
 }
 ```
+
+Data should be private by default. Expose only what is necessary via readonly properties or property hooks.
 
 ## 3-Layer Architecture (Enforced by Deptrac)
 
@@ -262,44 +289,11 @@ tests/
 tools/                      # Build tooling (PHPStan extensions, etc.)
 ```
 
-## CQRS Flow
-
-### Write Operation (Command)
-
-```
-HTTP POST /api/auth/register
-    ↓
-Infrastructure/Api/Resource/UserRegistrationResource.php (input DTO + validation)
-    ↓
-Infrastructure/Api/State/RegisterUserProcessor.php (driving adapter)
-    ↓  (dispatches via Symfony Messenger command.bus)
-Application/User/Command/RegisterUserHandler.php
-    ↓  (checks read model, creates aggregate)
-Domain/User/User::register() → records UserRegistered event
-    ↓  (persists via EventStore port)
-Infrastructure/Persistence/MongoDB/MongoEventStore.php
-    ↓  (dispatches event via event.bus)
-Infrastructure/Projection/UserProjection.php → updates read model
-```
-
-### Read Operation (Query)
-
-```
-HTTP GET /api/users/me (planned)
-    ↓
-Infrastructure/Api/State/GetCurrentUserProcessor.php (planned)
-    ↓  (queries read model directly or via query.bus)
-Domain/User/UserReadModelInterface
-    ↓  (implemented by adapter)
-Infrastructure/Persistence/MongoDB/MongoUserReadModel.php
-    ↓  (returns data for API response)
-```
-
 ## Development Guidelines
 
 ### Incremental Development Approach
 
-**IMPORTANT**: Unless explicitly asked to create everything at once, follow this incremental approach:
+**IMPORTANT**: Unless explicitly asked to create everything at once, follow this incremental approach, stopping after each step to get feedback:
 
 - ✅ **Only create code needed to fix the current error/test failure**
 - ✅ **Take one step at a time** - Let tests drive what to create next
@@ -319,7 +313,7 @@ This approach prevents over-engineering and ensures every line of code is justif
 
 ### Behavior-Driven State (Core Principle)
 
-> **"Every piece of state should be justified by behavior, and that behavior should be justified by tests."**
+> **Every piece of state should be justified by behavior, and that behavior should be justified by tests.**
 
 This principle is the conjunction of BDD and TDD. It means:
 
@@ -425,18 +419,6 @@ Unit tests include:
 - **Domain objects** (`tests/Unit/Domain/`) - Value objects, aggregates, domain services
 - **Infrastructure adapters** (`tests/Unit/Infrastructure/`) - When testing adapter-specific logic with mocked dependencies (e.g., `MessengerCommandBusTest` mocks `MessageBusInterface` to test exception unwrapping)
 
-```php
-// tests/Unit/Domain/User/EmailTest.php
-final class EmailTest extends TestCase
-{
-    public function testItRejectsInvalidEmailFormat(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        Email::fromString('not-an-email');
-    }
-}
-```
-
 #### 2. Use Case Tests (Behat)
 
 **What**: Test application core (commands/queries) with business language
@@ -445,50 +427,7 @@ final class EmailTest extends TestCase
 **Speed**: Fast (no infrastructure)
 **Coverage**: Complete use cases, domain logic orchestration
 
-```gherkin
-# features/user-registration.feature
-Scenario: Customer receives confirmation email
-  When a customer registers with email "test@example.com"
-  Then they should receive a confirmation email
-```
-
 **Key**: Use `TestContainer` with **spy objects** (not mocks) to verify side effects:
-
-```php
-// tests/UseCase/UserContext.php
-final class UserContext implements Context
-{
-    private TestContainer $container;
-    private ?string $registeredUserId = null;
-
-    public function __construct()
-    {
-        $this->container = new TestContainer();
-    }
-
-    #[When('I register with email :email and password :password')]
-    public function iRegisterWithEmailAndPassword(string $email, string $password): void
-    {
-        $this->registeredUserId = Uuid::v7()->toString();
-        $command = new RegisterUserCommand(
-            userId: $this->registeredUserId,
-            email: $email,
-            password: $password,
-        );
-        $this->container->getCommandBus()->dispatch($command);
-    }
-
-    #[Then('I should be registered')]
-    public function iShouldBeRegistered(): void
-    {
-        $events = $this->container->getEventStore()->getEvents(
-            $this->registeredUserId,
-            User::class
-        );
-        Assert::notEmpty($events, 'No events were stored for the user');
-    }
-}
-```
 
 #### 3. Adapter Tests (PHPUnit)
 
@@ -504,34 +443,6 @@ final class UserContext implements Context
 
 Contract tests verify that **all implementations of a port interface behave identically**. Use a data provider to test both the in-memory test double and the real infrastructure adapter with the same test cases.
 
-**Pattern:**
-
-```php
-// tests/Integration/Infrastructure/Persistence/EventStoreContractTest.php
-final class EventStoreContractTest extends TestCase
-{
-    #[DataProvider('eventStoreProvider')]
-    public function testItAppendsEventsToNewAggregate(EventStoreInterface $eventStore): void
-    {
-        $event = $this->createEvent('user-123');
-
-        $eventStore->append('user-123', User::class, [$event], expectedVersion: 0);
-
-        $storedEvents = $eventStore->getEvents('user-123', User::class);
-        self::assertCount(1, $storedEvents);
-    }
-
-    public static function eventStoreProvider(): iterable
-    {
-        // In-memory serves as reference implementation
-        yield 'InMemory' => [new InMemoryEventStore()];
-
-        // Real adapter must behave identically
-        yield 'MongoDB' => [self::createMongoEventStore()];
-    }
-}
-```
-
 **Why this pattern matters:**
 
 1. ✅ **In-memory validates test correctness** - If tests pass with in-memory but fail with real adapter, the adapter has a bug
@@ -544,7 +455,6 @@ final class EventStoreContractTest extends TestCase
 - `EventStoreContractTest` - Tests `InMemoryEventStore` and `MongoEventStore`
 - `UserReadModelContractTest` - Tests `InMemoryUserReadModel` and `MongoUserReadModel`
 - `PasswordHasherContractTest` - Tests `FakePasswordHasher` and `NativePasswordHasher`
-- `ClockContractTest` - Tests `FrozenClock` and `SystemClock`
 
 **Implementation-specific tests:**
 
@@ -558,47 +468,6 @@ Naming convention: `*ContractTest` = interface behavior, `Mongo*Test`/`Messenger
 **B. Driving Tests** (for incoming port adapters like API Platform processors):
 
 Driving tests verify that API processors correctly transform HTTP requests into commands and dispatch them to the application layer. They mock the command bus to verify the correct command is dispatched.
-
-```php
-// tests/Integration/Infrastructure/Api/RegisterUserEndpointTest.php
-final class RegisterUserEndpointTest extends WebTestCase
-{
-    private KernelBrowser $client;
-    private CommandBusInterface&MockObject $commandBus;
-
-    protected function setUp(): void
-    {
-        $this->client = self::createClient();
-        $this->commandBus = $this->createMock(CommandBusInterface::class);
-        self::getContainer()->set(CommandBusInterface::class, $this->commandBus);
-    }
-
-    public function testItRegistersUserSuccessfully(): void
-    {
-        // Arrange: Expect command bus to be called with RegisterUserCommand
-        $this->commandBus
-            ->expects(self::once())
-            ->method('dispatch')
-            ->with(self::callback(static function (RegisterUserCommand $command): bool {
-                self::assertTrue(Uuid::isValid($command->userId));
-                self::assertSame('test@example.com', $command->email);
-                self::assertSame('SecurePass123!', $command->password);
-                return true;
-            }));
-
-        // Act: POST to registration endpoint
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
-            'email' => 'test@example.com',
-            'password' => 'SecurePass123!',
-        ], JSON_THROW_ON_ERROR));
-
-        // Assert: Returns 201 Created
-        self::assertResponseStatusCodeSame(201);
-    }
-}
-```
 
 **Key points for driving tests:**
 
@@ -616,25 +485,6 @@ final class RegisterUserEndpointTest extends WebTestCase
 **Coverage**: Everything works together in production-like environment
 
 **Key**: Reuse the same scenarios from use case tests but with different context:
-
-```php
-// tests/E2E/UserContext.php (makes real HTTP requests)
-final class UserContext implements Context
-{
-    private KernelBrowser $client;
-
-    /** @When a customer registers with email :email */
-    public function aCustomerRegistersWithEmail(string $email): void
-    {
-        $this->client->request('POST', '/api/auth/register', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-        ], json_encode([
-            'email' => $email,
-            'password' => 'password123',
-        ]));
-    }
-}
-```
 
 ### Test & Quality Commands
 
@@ -685,6 +535,7 @@ All classes included in PHPUnit coverage must have **100% test coverage**. This 
 
 - If a class should be tested → it must have 100% coverage
 - If a class shouldn't be tested → add it to the exclusion list in `phpunit.dist.xml`
+- If trying to test a method within a class adds no value, ignore the method with `@codeCoverageIgnore` (rare case; see App\Infrastructure\Security\SecurityUser::eraseCredentials() as an example)
 
 **Currently excluded from coverage** (with rationale):
 
@@ -697,8 +548,6 @@ All classes included in PHPUnit coverage must have **100% test coverage**. This 
 
 - **Exclude**: Pure DTOs, simple delegating adapters with no logic, framework boilerplate
 - **Test**: Any class with conditional logic, validation, transformation, or business rules
-
-**Adding a new exclusion**: If a class genuinely shouldn't be tested, add it to `phpunit.dist.xml` and document the rationale in a comment. This makes exclusions intentional and reviewable.
 
 ## Development Workflow (TDD with Behat)
 
@@ -737,34 +586,20 @@ Following Noback's top-down approach from Section 14.7, with **tests written BEF
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Test Pyramid
-
-```
-         /\
-        /  \  E2E Tests (Behat e2e suite)
-       /    \ Few, slow, production-like
-      /------\
-     / Adapter \ Adapter Tests (PHPUnit integration)
-    /  Tests   \ Real database, API processors
-   /------------\
-  /  Use Case    \ Use Case Tests (Behat usecase suite)
- /     Tests      \ TestContainer + spies
-/------------------\
-/   Unit Tests      \ Unit Tests (PHPUnit)
---------------------  Many, fast, domain objects
-```
-
 ### Workflow Steps
 
 1. **Write Gherkin scenario** → Describes feature in business language
 2. **Create step definitions** → Wire to TestContainer (see Use Case Tests in Testing Strategy)
-3. **Drop to Domain** → Write unit tests FIRST, then implement domain objects
+3. **Drop to Domain** → For each method needed:
+    - Write test for ONE method → Stop for feedback
+    - Implement with minimal code until test passes → Stop for feedback
+    - Repeat for next method
 4. **Wire TestContainer** → Run `composer test:usecase` until GREEN
-5. **Go up to Infrastructure** → Write contract tests and driving tests FIRST (see Adapter Tests in Testing Strategy)
+5. **Go up to Infrastructure** → Same one-method-at-a-time cycle for adapters
 6. **Implement adapters** → Run `composer test:e2e` until GREEN
 7. **Verify slice complete** → All tests pass, static analysis clean
 
-**Key principle**: All domain objects should have unit tests before moving to infrastructure.
+**Key principle**: Write failing tests for one method, implement them with minimal code until they pass, get feedback. Never batch multiple methods.
 
 ### Adding Methods to Port Interfaces
 
@@ -782,157 +617,6 @@ Only after UseCase tests are GREEN, move to Infrastructure:
 7. **Verify contract tests pass** → All implementations behave identically
 
 This ensures you don't prematurely implement infrastructure code before the application layer is working.
-
-## Common Patterns
-
-### Creating a Value Object
-
-```php
-// Domain/Shared/ValueObject/Money.php
-final readonly class Money
-{
-    private function __construct(
-        private int $amountInCents,
-        private Currency $currency,
-    ) {
-        if ($amountInCents < 0) {
-            throw new \InvalidArgumentException('Money cannot be negative');
-        }
-    }
-
-    public static function fromCents(int $cents, Currency $currency): self
-    {
-        return new self($cents, $currency);
-    }
-
-    public static function fromFloat(float $amount, Currency $currency): self
-    {
-        return new self((int) round($amount * 100), $currency);
-    }
-
-    public function add(self $other): self
-    {
-        if (!$this->currency->equals($other->currency)) {
-            throw new \InvalidArgumentException('Cannot add different currencies');
-        }
-        return new self($this->amountInCents + $other->amountInCents, $this->currency);
-    }
-
-    public function toFloat(): float
-    {
-        return $this->amountInCents / 100;
-    }
-}
-```
-
-### Creating a Command Handler (New Aggregate)
-
-```php
-// Application/User/Command/RegisterUserHandler.php
-final readonly class RegisterUserHandler implements CommandHandlerInterface
-{
-    public function __construct(
-        private EventStoreInterface $eventStore,
-        private UserReadModelInterface $userReadModel,
-        private PasswordHasherInterface $passwordHasher,
-        private ClockInterface $clock,
-    ) {
-    }
-
-    #[\Override]
-    public function __invoke(CommandInterface $command): void
-    {
-        $email = Email::fromString($command->email);
-
-        // Validate via read model
-        if ($this->userReadModel->existsWithEmail($email)) {
-            throw UserAlreadyExistsException::withEmail($email);
-        }
-
-        // Hash password and create aggregate
-        $hashedPassword = $this->passwordHasher->hash(
-            PlainPassword::fromString($command->password),
-        );
-        $user = User::register(
-            UserId::fromString($command->userId),
-            $email,
-            $hashedPassword,
-            $this->clock->now(),
-        );
-
-        // Persist events (expectedVersion: 0 for new aggregates)
-        $this->eventStore->append(
-            $command->userId,
-            User::class,
-            $user->releaseEvents(),
-            expectedVersion: 0,
-        );
-    }
-}
-```
-
-### Creating a Command Handler (Existing Aggregate)
-
-Key differences from new aggregate: load via `reconstitute()`, use current `$version` for optimistic concurrency.
-
-```php
-// Application/User/Command/ChangeEmailHandler.php
-#[\Override]
-public function __invoke(CommandInterface $command): void
-{
-    $userId = $command->userId;
-
-    // Load aggregate from events (vs. new aggregate: just `new self()`)
-    $events = $this->eventStore->getEvents($userId, User::class);
-    $version = $this->eventStore->getVersion($userId, User::class);
-    $user = User::reconstitute($events);
-
-    $user->changeEmail(Email::fromString($command->newEmail));
-
-    // expectedVersion: $version (vs. new aggregate: expectedVersion: 0)
-    $this->eventStore->append(
-        $userId,
-        User::class,
-        $user->releaseEvents(),
-        expectedVersion: $version,
-    );
-}
-```
-
-### Creating a Projection
-
-Projections listen to domain events and update read models. They use `upsert` for idempotency:
-
-```php
-// Infrastructure/Projection/UserProjection.php
-final readonly class UserProjection
-{
-    public function __construct(
-        private Collection $collection,
-    ) {}
-
-    #[AsMessageHandler(bus: 'event.bus')]
-    public function onUserRegistered(UserRegistered $event): void
-    {
-        // Use updateOne with upsert for idempotency - replaying events is safe
-        $this->collection->updateOne(
-            ['_id' => $event->id],
-            ['$set' => [
-                'email' => $event->email,
-                'registered_at' => new UTCDateTime($event->occurredAt),
-            ]],
-            ['upsert' => true],
-        );
-    }
-}
-```
-
-**Key points**:
-
-- Projections are message handlers on `event.bus`
-- Use `upsert: true` so replaying events doesn't cause duplicates
-- Use `$set` to update specific fields, making projections idempotent
-- One projection class can handle multiple event types
 
 ## Important Principles
 
@@ -958,70 +642,8 @@ final readonly class UserProjection
 - ✅ Test domain logic without framework
 - ✅ Place build tooling in `tools/` (not in 3-layer architecture)
 
-## API Development
-
-### Authentication Flow
-
-1. **Register**: `POST /api/auth/register` → Returns 201 Created
-2. **Login**: `POST /api/auth/login` → Returns JWT token
-3. **Authenticated requests**: Add `Authorization: Bearer <token>` header
-4. **Get current user**: `GET /api/users/me`
-
-### Adding a New Endpoint
-
-1. Create Command/Query in Application layer
-2. Create Handler implementing `CommandHandlerInterface<YourCommand>` (auto-tagged via `_instanceof` in services.yaml)
-3. Create State Processor/Provider in Infrastructure/Api/State
-4. Add API Resource or operation in Infrastructure/Api/Resource
-
-Follow outside-in TDD approach: write tests before implementation at each layer (see Development Workflow).
-
-## Configuration
-
-### Environment Variables
+## Useful Console Commands
 
 ```bash
-# .env
-MONGODB_URL="mongodb://localhost:27017"
-MONGODB_DATABASE="weight_log"
-
-# JWT (not yet implemented)
-JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
-JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
-JWT_PASSPHRASE=your-passphrase
-JWT_TOKEN_TTL=3600  # 1 hour
+php bin/console app:create-indices  # Create MongoDB indices (required for production)
 ```
-
-### MongoDB Persistence
-
-We use **event sourcing** - aggregates are persisted as streams of events, not documents:
-
-```php
-// Infrastructure/Persistence/MongoDB/MongoEventStore.php
-// Stores events in 'events' collection with structure:
-// { aggregate_id, aggregate_type, version, event_type, event_data, occurred_at }
-
-// Infrastructure/Persistence/MongoDB/MongoUserReadModel.php
-// Read model in 'users' collection, updated by projections
-// { _id: aggregateId, email, registered_at }
-```
-
-**Collections**:
-
-- `events` - Event store (unique index on aggregate_id + aggregate_type + version)
-- `users` - Read model projection (unique index on email)
-
-**Setup indices** (required for production):
-
-```bash
-php bin/console app:create-indices
-```
-
-## References
-
-- **Matthias Noback**: "Advanced Web Application Architecture"
-- **Matthias Noback**: https://matthiasnoback.nl/book/a-year-with-symfony/
-- **API Platform**: https://api-platform.com/docs/
-- **Symfony Messenger**: https://symfony.com/doc/current/messenger.html
-- **Hexagonal Architecture**: https://alistair.cockburn.us/hexagonal-architecture/
-- **DDD**: "Domain-Driven Design" by Eric Evans
