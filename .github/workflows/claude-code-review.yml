@@ -38,8 +38,21 @@ jobs:
           extensions: mongodb
           tools: composer:v2
 
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          APP_ENV=test
+          APP_SECRET=${{ secrets.APP_SECRET }}
+          MONGODB_URL=${{ secrets.MONGODB_URL }}
+          MONGODB_DATABASE=${{ secrets.MONGODB_DATABASE }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}
+          JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
+          EOF
+          sed -i 's/^[[:space:]]*//' .env
+
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-scripts
+        run: composer install --prefer-dist --no-progress
 
       - name: Run Claude Code Review
         id: claude-review
@@ -59,9 +72,9 @@ jobs:
 
             Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
 
-            Run `composer analyze` and `composer deptrac` to check for static analysis and architecture issues.
+            Run `composer test:types` and `composer test:arch` to check for static analysis and architecture issues.
 
             Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
 
-          claude_args: '--allowed-tools "Bash(composer analyze:*),Bash(composer deptrac:*),Bash(composer test:*),Bash(vendor/bin/phpstan:*),Bash(vendor/bin/behat:*),Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+          claude_args: '--allowed-tools "Bash(composer test:*),Bash(vendor/bin/phpstan:*),Bash(vendor/bin/behat:*),Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
 

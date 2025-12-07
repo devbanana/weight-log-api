@@ -37,8 +37,21 @@ jobs:
           extensions: mongodb
           tools: composer:v2
 
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          APP_ENV=test
+          APP_SECRET=${{ secrets.APP_SECRET }}
+          MONGODB_URL=${{ secrets.MONGODB_URL }}
+          MONGODB_DATABASE=${{ secrets.MONGODB_DATABASE }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}
+          JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
+          EOF
+          sed -i 's/^[[:space:]]*//' .env
+
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-scripts
+        run: composer install --prefer-dist --no-progress
 
       - name: Run Claude Code
         id: claude
@@ -47,5 +60,5 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           additional_permissions: |
             actions: read
-          claude_args: '--allowed-tools "Bash(composer analyze:*),Bash(composer deptrac:*),Bash(composer test:*),Bash(composer fix:cs:*),Bash(vendor/bin/phpstan:*),Bash(vendor/bin/behat:*),Bash(gh pr:*),Bash(gh issue:*)"'
+          claude_args: '--allowed-tools "Bash(composer test:*),Bash(composer fix:cs:*),Bash(vendor/bin/phpstan:*),Bash(vendor/bin/behat:*),Bash(gh pr:*),Bash(gh issue:*)"'
 

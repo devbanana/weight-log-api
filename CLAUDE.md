@@ -502,25 +502,25 @@ composer test:integration
 composer test:e2e
 
 # All PHPUnit tests
-composer test
+composer test:phpunit
 
 # All Behat tests
 composer test:behat
 
-# All tests (PHPUnit + Behat)
-composer test:all
-
 # Test with coverage enforcement (fails if not 100%)
 composer test:coverage
 
-# Static analysis (must pass level max)
-composer analyze
+# Code style check
+composer test:cs
 
-# Code formatting
+# Static analysis (must pass level max)
+composer test:types
+
+# Code formatting (auto-fix)
 composer fix:cs
 
 # Architecture boundaries
-composer deptrac
+composer test:arch
 ```
 
 **Note on environment variables**: All `test:*` scripts use `env -u` to unset `APP_ENV` and `JWT_*` variables before running. This ensures Symfony's dotenv loads the correct values from `.env.test` rather than inheriting potentially incorrect values from the shell environment (e.g., from tools that auto-import `.env`).
@@ -582,7 +582,7 @@ Following Noback's top-down approach from Section 14.7, with **tests written BEF
 ┌─────────────────────────────────────────────────────────────────────┐
 │  4. SLICE COMPLETE                                                  │
 │     All tests pass: Unit, UseCase, Integration, E2E                 │
-│     Run: composer test:all && composer analyze                      │
+│     Run: composer test:phpunit && composer test:behat               │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
