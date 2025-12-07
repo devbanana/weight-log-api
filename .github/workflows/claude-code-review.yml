@@ -38,6 +38,12 @@ jobs:
           extensions: mongodb
           tools: composer:v2
 
+      - name: Decode JWT keys
+        run: |
+          mkdir -p config/jwt
+          echo "${{ secrets.JWT_PRIVATE_KEY }}" | base64 -d > config/jwt/private.pem
+          echo "${{ secrets.JWT_PUBLIC_KEY }}" | base64 -d > config/jwt/public.pem
+
       - name: Create .env file
         run: |
           cat > .env << EOF
@@ -45,8 +51,8 @@ jobs:
           APP_SECRET=${{ secrets.APP_SECRET }}
           MONGODB_URL=${{ secrets.MONGODB_URL }}
           MONGODB_DATABASE=${{ secrets.MONGODB_DATABASE }}
-          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-          JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}
+          JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+          JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
           JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
           DEFAULT_URI=http://localhost
           CORS_ALLOW_ORIGIN='^https?://localhost(:[0-9]+)?$'
