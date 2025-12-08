@@ -61,6 +61,9 @@ jobs:
             - name: Install dependencies
               run: composer install --prefer-dist --no-progress
 
+            - name: Warm up cache for static analysis
+              run: bin/console cache:warmup --env=dev
+
             - name: Run Claude Code
               id: claude
               uses: anthropics/claude-code-action@v1
@@ -69,4 +72,4 @@ jobs:
                   additional_permissions: |
                       actions: read
                   claude_args: |
-                      --allowedTools "Bash(composer install:*),Bash(composer test:*),Bash(composer fix:cs:*),Bash(vendor/bin/phpstan:*),Bash(vendor/bin/behat:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr create:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Bash(gh issue create:*),Bash(git status:*),Bash(git log:*),Bash(git diff:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*)"
+                      --allowedTools "Bash(composer install:*),Bash(composer test:*),Bash(composer fix:cs:*),Bash(bin/console cache:warmup:*),Bash(vendor/bin/phpstan:*),Bash(vendor/bin/behat:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr create:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Bash(gh issue create:*),Bash(git status:*),Bash(git log:*),Bash(git diff:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*)"
