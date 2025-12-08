@@ -10,9 +10,9 @@ use App\Application\User\Command\LoginCommand;
 use App\Application\User\Query\FindUserAuthDataByEmailQuery;
 use App\Application\User\Query\UserAuthData;
 use App\Domain\User\Exception\CouldNotAuthenticate;
-use App\Infrastructure\Api\Resource\UserLoginResource;
-use App\Infrastructure\Api\Resource\UserLoginResponse;
-use App\Infrastructure\Api\State\LoginUserProcessor;
+use App\Infrastructure\Api\Resource\UserAuthenticationResource;
+use App\Infrastructure\Api\Resource\UserAuthenticationResponse;
+use App\Infrastructure\Api\State\AuthenticateUserProcessor;
 use App\Infrastructure\Security\SecurityUser;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -23,18 +23,18 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * Driving tests for the user login API endpoint.
+ * Driving tests for the user authentication API endpoint.
  *
  * These tests verify that the incoming HTTP adapter (API Platform processor)
  * correctly transforms HTTP requests into queries/commands and generates JWT tokens.
  *
  * @internal
  */
-#[CoversClass(UserLoginResource::class)]
-#[CoversClass(LoginUserProcessor::class)]
-#[CoversClass(UserLoginResponse::class)]
+#[CoversClass(UserAuthenticationResource::class)]
+#[CoversClass(AuthenticateUserProcessor::class)]
+#[CoversClass(UserAuthenticationResponse::class)]
 #[UsesClass(SecurityUser::class)]
-final class LoginUserEndpointTest extends WebTestCase
+final class AuthenticateUserEndpointTest extends WebTestCase
 {
     use HttpHelper;
 
@@ -64,7 +64,7 @@ final class LoginUserEndpointTest extends WebTestCase
         $this->queryBus = $this->createMock(QueryBusInterface::class);
         self::getContainer()->set(QueryBusInterface::class, $this->queryBus);
 
-        // Mock the command bus for dispatching login command
+        // Mock the command bus for dispatching authenticate command
         $this->commandBus = $this->createMock(CommandBusInterface::class);
         self::getContainer()->set(CommandBusInterface::class, $this->commandBus);
 
@@ -73,7 +73,7 @@ final class LoginUserEndpointTest extends WebTestCase
         self::getContainer()->set(JWTTokenManagerInterface::class, $this->jwtManager);
     }
 
-    public function testItLogsInUserSuccessfully(): void
+    public function testItAuthenticatesUserSuccessfully(): void
     {
         // Arrange: Query returns user auth data
         $this->queryBus
@@ -87,7 +87,7 @@ final class LoginUserEndpointTest extends WebTestCase
             ->willReturn(new UserAuthData('user-123'))
         ;
 
-        // Arrange: Command bus dispatches login command
+        // Arrange: Command bus dispatches authenticate command
         $this->commandBus
             ->expects(self::once())
             ->method('dispatch')
@@ -112,8 +112,8 @@ final class LoginUserEndpointTest extends WebTestCase
             ->willReturn('jwt-token-123')
         ;
 
-        // Act: POST to login endpoint
-        $this->postJson('/api/auth/login', [
+        // Act: POST to tokens endpoint
+        $this->postJson('/api/tokens', [
             'email' => 'alice@example.com',
             'password' => 'SecurePass123!',
         ]);
@@ -148,7 +148,7 @@ final class LoginUserEndpointTest extends WebTestCase
         ;
 
         // Act: POST with non-existent email
-        $this->postJson('/api/auth/login', [
+        $this->postJson('/api/tokens', [
             'email' => 'nonexistent@example.com',
             'password' => 'SecurePass123!',
         ]);
@@ -180,7 +180,7 @@ final class LoginUserEndpointTest extends WebTestCase
         ;
 
         // Act: POST with wrong password
-        $this->postJson('/api/auth/login', [
+        $this->postJson('/api/tokens', [
             'email' => 'alice@example.com',
             'password' => 'WrongPassword!',
         ]);
@@ -197,7 +197,7 @@ final class LoginUserEndpointTest extends WebTestCase
         $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with invalid email
-        $this->postJson('/api/auth/login', [
+        $this->postJson('/api/tokens', [
             'email' => 'not-an-email',
             'password' => 'SecurePass123!',
         ]);
@@ -214,7 +214,7 @@ final class LoginUserEndpointTest extends WebTestCase
         $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with empty email
-        $this->postJson('/api/auth/login', [
+        $this->postJson('/api/tokens', [
             'email' => '',
             'password' => 'SecurePass123!',
         ]);
@@ -231,7 +231,7 @@ final class LoginUserEndpointTest extends WebTestCase
         $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with empty password
-        $this->postJson('/api/auth/login', [
+        $this->postJson('/api/tokens', [
             'email' => 'alice@example.com',
             'password' => '',
         ]);
@@ -248,7 +248,7 @@ final class LoginUserEndpointTest extends WebTestCase
         $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with no email field
-        $this->postJson('/api/auth/login', [
+        $this->postJson('/api/tokens', [
             'password' => 'SecurePass123!',
         ]);
 
@@ -264,7 +264,7 @@ final class LoginUserEndpointTest extends WebTestCase
         $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with no password field
-        $this->postJson('/api/auth/login', [
+        $this->postJson('/api/tokens', [
             'email' => 'alice@example.com',
         ]);
 

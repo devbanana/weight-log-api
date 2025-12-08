@@ -11,21 +11,21 @@ use App\Application\MessageBus\QueryBusInterface;
 use App\Application\User\Command\LoginCommand;
 use App\Application\User\Query\FindUserAuthDataByEmailQuery;
 use App\Domain\User\Exception\CouldNotAuthenticate;
-use App\Infrastructure\Api\Resource\UserLoginResource;
-use App\Infrastructure\Api\Resource\UserLoginResponse;
+use App\Infrastructure\Api\Resource\UserAuthenticationResource;
+use App\Infrastructure\Api\Resource\UserAuthenticationResponse;
 use App\Infrastructure\Security\SecurityUser;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 
 /**
- * State processor for user login.
+ * State processor for user authentication.
  *
  * Transforms the API request into queries/commands and generates JWT token.
  * This is a "driving adapter" in hexagonal architecture.
  *
- * @implements ProcessorInterface<UserLoginResource, UserLoginResponse>
+ * @implements ProcessorInterface<UserAuthenticationResource, UserAuthenticationResponse>
  */
-final readonly class LoginUserProcessor implements ProcessorInterface
+final readonly class AuthenticateUserProcessor implements ProcessorInterface
 {
     public function __construct(
         private QueryBusInterface $queryBus,
@@ -35,10 +35,10 @@ final readonly class LoginUserProcessor implements ProcessorInterface
     }
 
     /**
-     * @param UserLoginResource $data
+     * @param UserAuthenticationResource $data
      */
     #[\Override]
-    public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): UserLoginResponse
+    public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): UserAuthenticationResponse
     {
         // 1. Query for auth data by email
         $authData = $this->queryBus->dispatch(
@@ -64,6 +64,6 @@ final readonly class LoginUserProcessor implements ProcessorInterface
             new SecurityUser($authData->userId, $authData->roles),
         );
 
-        return new UserLoginResponse($token);
+        return new UserAuthenticationResponse($token);
     }
 }

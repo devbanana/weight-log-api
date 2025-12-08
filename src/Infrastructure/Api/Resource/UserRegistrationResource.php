@@ -20,7 +20,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     shortName: 'Registration',
     operations: [
         new Post(
-            uriTemplate: '/auth/register',
+            uriTemplate: '/users',
             status: 201,
             processor: RegisterUserProcessor::class,
             output: false,
