@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SECRETS_DIR="${WEIGHT_LOG_SECRETS:-$HOME/.config/weight-log-api}"
+
+if [[ ! -d "$SECRETS_DIR" ]]; then
+  echo "Secrets directory not found: $SECRETS_DIR"
+  echo "Set WEIGHT_LOG_SECRETS or create the directory"
+  exit 1
+fi
+
+echo "Setting up worktree from $SECRETS_DIR..."
+
+# Create required directories
+mkdir -p config/jwt config/secrets/prod .claude/plans
+
+# Link .env files
+for env_file in "$SECRETS_DIR"/.env*; do
+  if [[ -f "$env_file" ]]; then
+    ln -sf "$env_file" "$(basename "$env_file")"
+    echo "  Linked $(basename "$env_file")"
+  fi
+done
+
+# Link JWT keys
+ln -sf "$SECRETS_DIR/jwt/private.pem" config/jwt/private.pem
+ln -sf "$SECRETS_DIR/jwt/public.pem" config/jwt/public.pem
+echo "  Linked JWT keys"
+
+# Link Symfony secrets
+for secret_file in "$SECRETS_DIR"/secrets/*.php; do
+  if [[ -f "$secret_file" ]]; then
+    filename=$(basename "$secret_file")
+    # Extract environment from filename (e.g., prod.decrypt.private.php -> prod)
+    env_name="${filename%%.*}"
+    mkdir -p "config/secrets/$env_name"
+    ln -sf "$secret_file" "config/secrets/$env_name/$filename"
+    echo "  Linked $filename"
+  fi
+done
+
+# Link Claude plans
+for plan_file in "$SECRETS_DIR"/.claude/plans/*; do
+  if [[ -f "$plan_file" ]]; then
+    ln -sf "$plan_file" ".claude/plans/$(basename "$plan_file")"
+    echo "  Linked .claude/plans/$(basename "$plan_file")"
+  fi
+done
+
+# Link Claude settings
+if [[ -f "$SECRETS_DIR/.claude/settings.local.json" ]]; then
+  ln -sf "$SECRETS_DIR/.claude/settings.local.json" .claude/settings.local.json
+  echo "  Linked .claude/settings.local.json"
+fi
+
+echo ""
+echo "Running composer install..."
+composer install
+
+echo ""
+echo "Worktree setup complete!"
