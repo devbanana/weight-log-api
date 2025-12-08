@@ -12,7 +12,7 @@ fi
 echo "Setting up worktree from $SECRETS_DIR..."
 
 # Create required directories
-mkdir -p config/jwt config/secrets/prod .claude/plans
+mkdir -p config/jwt config/secrets/prod .claude
 
 # Link .env files
 for env_file in "$SECRETS_DIR"/.env*; do
@@ -39,13 +39,12 @@ for secret_file in "$SECRETS_DIR"/secrets/*.php; do
   fi
 done
 
-# Link Claude plans
-for plan_file in "$SECRETS_DIR"/.claude/plans/*; do
-  if [[ -f "$plan_file" ]]; then
-    ln -sf "$plan_file" ".claude/plans/$(basename "$plan_file")"
-    echo "  Linked .claude/plans/$(basename "$plan_file")"
-  fi
-done
+# Link Claude plans directory
+if [[ -d "$SECRETS_DIR/.claude/plans" ]]; then
+  rm -rf .claude/plans  # Remove if exists (dir or broken symlink)
+  ln -sf "$SECRETS_DIR/.claude/plans" .claude/plans
+  echo "  Linked .claude/plans/"
+fi
 
 # Link Claude settings
 if [[ -f "$SECRETS_DIR/.claude/settings.local.json" ]]; then

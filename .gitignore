@@ -23,7 +23,7 @@
 ###< phpunit/phpunit ###
 
 # Claude Code local files
-.claude/plans/
+.claude/plans
 .claude/settings.local.json
 .claude/.DS_Store
 
