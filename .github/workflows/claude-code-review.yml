@@ -1,88 +1,89 @@
 name: Claude Code Review
 
 on:
-  pull_request:
-    types: [opened, synchronize]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    pull_request:
+        types: [opened, synchronize]
+        # Optional: Only run on specific file changes
+        # paths:
+        #   - "src/**/*.ts"
+        #   - "src/**/*.tsx"
+        #   - "src/**/*.js"
+        #   - "src/**/*.jsx"
 
 jobs:
-  claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    claude-review:
+        # Optional: Filter by PR author
+        # if: |
+        #   github.event.pull_request.user.login == 'external-contributor' ||
+        #   github.event.pull_request.user.login == 'new-developer' ||
+        #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
 
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-      issues: read
-      id-token: write
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pull-requests: write
+            issues: read
+            id-token: write
+            actions: read # Required for Claude to read CI results
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 1
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: mongodb
-          tools: composer:v2
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: "8.4"
+                  extensions: mongodb
+                  tools: composer:v2
 
-      - name: Decode JWT keys
-        run: |
-          mkdir -p config/jwt
-          echo "${{ secrets.JWT_PRIVATE_KEY }}" | base64 -d > config/jwt/private.pem
-          echo "${{ secrets.JWT_PUBLIC_KEY }}" | base64 -d > config/jwt/public.pem
+            - name: Decode JWT keys
+              run: |
+                  mkdir -p config/jwt
+                  echo "${{ secrets.JWT_PRIVATE_KEY }}" | base64 -d > config/jwt/private.pem
+                  echo "${{ secrets.JWT_PUBLIC_KEY }}" | base64 -d > config/jwt/public.pem
 
-      - name: Create .env file
-        run: |
-          cat > .env << EOF
-          APP_ENV=test
-          APP_SECRET=${{ secrets.APP_SECRET }}
-          MONGODB_URL=${{ secrets.MONGODB_URL }}
-          MONGODB_DATABASE=${{ secrets.MONGODB_DATABASE }}
-          JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
-          JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
-          JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
-          DEFAULT_URI=http://localhost
-          CORS_ALLOW_ORIGIN='^https?://localhost(:[0-9]+)?$'
-          EOF
-          sed -i 's/^[[:space:]]*//' .env
+            - name: Create .env file
+              run: |
+                  cat > .env << EOF
+                  APP_ENV=test
+                  APP_SECRET=${{ secrets.APP_SECRET }}
+                  MONGODB_URL=${{ secrets.MONGODB_URL }}
+                  MONGODB_DATABASE=${{ secrets.MONGODB_DATABASE }}
+                  JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+                  JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+                  JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
+                  DEFAULT_URI=http://localhost
+                  CORS_ALLOW_ORIGIN='^https?://localhost(:[0-9]+)?$'
+                  EOF
+                  sed -i 's/^[[:space:]]*//' .env
 
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+            - name: Install dependencies
+              run: composer install --prefer-dist --no-progress
 
-      - name: Run Claude Code Review
-        id: claude-review
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
+            - name: Run Claude Code Review
+              id: claude-review
+              uses: anthropics/claude-code-action@v1
+              with:
+                  claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+                  prompt: |
+                      REPO: ${{ github.repository }}
+                      PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
+                      Please review this pull request and provide feedback on:
+                      - Code quality and best practices
+                      - Potential bugs or issues
+                      - Performance considerations
+                      - Security concerns
+                      - Test coverage
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+                      Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
 
-            Run `composer test:types` and `composer test:arch` to check for static analysis and architecture issues.
+                      Run `composer test:types` and `composer test:arch` to check for static analysis and architectural issues.
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+                      Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
 
-          claude_args: '--allowedTools "Bash(composer test:*),Bash(bin/console:*),Bash(vendor/bin/phpstan:*),Bash(vendor/bin/behat:*),Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
-
+                  claude_args: |
+                      --allowedTools "Bash(composer install:*),Bash(composer test:*),Bash(bin/console:*),Bash(vendor/bin/phpstan:*),Bash(vendor/bin/behat:*),Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"
