@@ -64,6 +64,9 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
+      - name: Warm up cache for static analysis
+        run: bin/console cache:warmup --env=dev
+
       - name: Run PHPStan
         run: composer test:types
 
