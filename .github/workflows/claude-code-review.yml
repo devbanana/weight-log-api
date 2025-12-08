@@ -75,18 +75,33 @@ jobs:
                       REPO: ${{ github.repository }}
                       PR NUMBER: ${{ github.event.pull_request.number }}
 
-                      Please review this pull request and provide feedback on:
-                      - Code quality and best practices
-                      - Potential bugs or issues
-                      - Performance considerations
-                      - Security concerns
-                      - Test coverage
+                      Please review this pull request thoroughly. Use the repository's CLAUDE.md for guidance on style and conventions.
 
-                      Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+                      ## Review Process
 
-                      Run `composer test:types` and `composer test:arch` to check for static analysis and architectural issues.
+                      1. First, run static analysis tools:
+                         - `composer test:types` (PHPStan)
+                         - `composer test:arch` (Deptrac)
+                         - `composer test:cs` (code style)
 
-                      Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+                      2. Use the `code-reviewer` agent to perform a comprehensive code review checking:
+                         - Code quality and potential bugs
+                         - Security vulnerabilities
+                         - Missing functionality gaps
+                         - Adherence to project coding standards
+
+                      3. Use the `architecture-guardian` agent to validate:
+                         - DDD/Hexagonal Architecture compliance
+                         - CQRS pattern adherence
+                         - Value object and aggregate design
+                         - Layer boundary violations
+                         - Event sourcing patterns
+
+                      ## Output
+
+                      Compile your findings into a constructive review. Be specific about issues and provide actionable feedback.
+
+                      Use `gh pr comment` with your Bash tool to post your review as a comment on the PR.
 
                   claude_args: |
                       --allowedTools "Bash(composer install:*),Bash(composer test:arch:*),Bash(composer test:behat:*),Bash(composer test:coverage:*),Bash(composer test:cs:*),Bash(composer test:e2e:*),Bash(composer test:integration:*),Bash(composer test:phpunit:*),Bash(composer test:types:*),Bash(composer test:unit:*),Bash(composer test:usecase:*),Bash(composer fix:cs:*),Bash(env:*),Bash(bin/console:*),Bash(vendor/bin/phpstan:*),Bash(vendor/bin/phpunit:*),Bash(vendor/bin/behat:*),Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"
