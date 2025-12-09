@@ -26,10 +26,12 @@ use PHPStan\Type\Type;
  *
  * Example of what this rule flags:
  *
- *     // Given: function foo(string $bar = 'default') {}
- *     foo('default');  // <-- Flagged! Passing the default value explicitly
- *     foo();           // OK - uses default implicitly
- *     foo('other');    // OK - passing a different value
+ *     // Given: function foo(string $bar = 'default', int $baz = 10) {}
+ *     foo('default');      // <-- Flagged! Passing the default value explicitly
+ *     foo();               // OK - uses defaults implicitly
+ *     foo('other');        // OK - passing a different value
+ *     foo(baz: 20);        // OK - named parameter skips $bar's default
+ *     foo('default', 20);  // <-- Flagged! Use foo(baz: 20) instead
  *
  * Why this matters:
  * - Reduces noise in function calls
@@ -236,8 +238,8 @@ final class ForbidRedundantDefaultValueArgumentRule implements Rule
     /**
      * Compares each argument against its parameter's default value.
      *
-     * @param list<Arg>                       $args       The arguments passed in the call
-     * @param array<int, ParameterReflection> $parameters The parameter definitions
+     * @param list<Arg>                 $args       The arguments passed in the call
+     * @param list<ParameterReflection> $parameters The parameter definitions
      *
      * @return list<IdentifierRuleError>
      */
@@ -287,6 +289,7 @@ final class ForbidRedundantDefaultValueArgumentRule implements Rule
                     ),
                 )
                     ->identifier('argument.redundantDefault')
+                    ->tip('Use named parameters to skip intermediate defaults, e.g., foo(bar: $value)')
                     ->build()
                 ;
             }
