@@ -105,7 +105,8 @@ final class AuthenticateUserEndpointTest extends WebTestCase
         self::assertSame('Bearer', $data['token_type']);
 
         self::assertArrayHasKey('expires_in', $data);
-        self::assertSame(3_600, $data['expires_in']);
+        $expectedTtl = self::getContainer()->getParameter('lexik_jwt_authentication.token_ttl');
+        self::assertSame($expectedTtl, $data['expires_in']);
 
         self::assertArrayHasKey('expires_at', $data);
         self::assertIsString($data['expires_at']);
@@ -113,7 +114,7 @@ final class AuthenticateUserEndpointTest extends WebTestCase
         self::assertInstanceOf(\DateTimeImmutable::class, $expiresAtDate);
         self::assertSame('+00:00', $expiresAtDate->format('P'), 'expires_at should be in UTC');
 
-        $expectedExpiresAt = new \DateTimeImmutable()->modify('+3600 seconds');
+        $expectedExpiresAt = new \DateTimeImmutable()->modify("+{$expectedTtl} seconds");
         self::assertEqualsWithDelta(
             $expectedExpiresAt->getTimestamp(),
             $expiresAtDate->getTimestamp(),
