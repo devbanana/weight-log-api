@@ -8,6 +8,7 @@ use App\Application\MessageBus\CommandBusInterface;
 use App\Application\User\Command\RegisterUserCommand;
 use App\Domain\User\Exception\UserAlreadyExistsException;
 use App\Domain\User\ValueObject\Email;
+use App\Infrastructure\Api\EventListener\TokenResponseHeadersListener;
 use App\Infrastructure\Api\Resource\UserRegistrationResource;
 use App\Infrastructure\Api\State\RegisterUserProcessor;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -34,6 +35,7 @@ use Symfony\Component\Uid\UuidV7;
 #[CoversClass(RegisterUserProcessor::class)]
 #[CoversClass(UserRegistrationResource::class)]
 #[UsesClass(Email::class)]
+#[UsesClass(TokenResponseHeadersListener::class)]
 final class RegisterUserEndpointTest extends WebTestCase
 {
     use HttpHelper;

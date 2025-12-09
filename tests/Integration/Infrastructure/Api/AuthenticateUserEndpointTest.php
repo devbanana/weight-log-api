@@ -10,6 +10,7 @@ use App\Application\User\Command\LoginCommand;
 use App\Application\User\Query\FindUserAuthDataByEmailQuery;
 use App\Application\User\Query\UserAuthData;
 use App\Domain\User\Exception\CouldNotAuthenticate;
+use App\Infrastructure\Api\EventListener\TokenResponseHeadersListener;
 use App\Infrastructure\Api\Resource\UserAuthenticationResource;
 use App\Infrastructure\Api\Resource\UserAuthenticationResponse;
 use App\Infrastructure\Api\State\AuthenticateUserProcessor;
@@ -34,6 +35,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 #[CoversClass(AuthenticateUserProcessor::class)]
 #[CoversClass(UserAuthenticationResponse::class)]
 #[UsesClass(SecurityUser::class)]
+#[UsesClass(TokenResponseHeadersListener::class)]
 final class AuthenticateUserEndpointTest extends WebTestCase
 {
     use HttpHelper;
@@ -120,6 +122,22 @@ final class AuthenticateUserEndpointTest extends WebTestCase
             $expiresAtDate->getTimestamp(),
             5,
         );
+    }
+
+    public function testItReturnsCacheControlHeaderOnSuccess(): void
+    {
+        $this->queryBus->method('dispatch')->willReturn(new UserAuthData('user-123'));
+
+        $this->postJson('/api/tokens', [
+            'email' => 'alice@example.com',
+            'password' => 'SecurePass123!',
+        ]);
+
+        self::assertResponseStatusCodeSame(200);
+
+        $cacheControl = $this->client->getResponse()->headers->get('Cache-Control');
+        self::assertIsString($cacheControl);
+        self::assertStringContainsString('no-store', $cacheControl);
     }
 
     public function testItReturns401WhenUserNotFound(): void

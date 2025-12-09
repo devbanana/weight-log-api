@@ -46,6 +46,14 @@ deptrac:
       collectors:
         - type: classLike
           value: Symfony\\Component\\HttpKernel\\.*
+    - name: SymfonyHttpFoundation
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\HttpFoundation\\.*
+    - name: SymfonyEventDispatcher
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\EventDispatcher\\.*
     - name: SymfonyConsole
       collectors:
         - type: classLike
@@ -77,6 +85,8 @@ deptrac:
       - SymfonyValidator
       - SymfonyUid
       - SymfonyHttpKernel
+      - SymfonyHttpFoundation
+      - SymfonyEventDispatcher
       - SymfonyConsole
       - ApiPlatform
       - LexikJWT
