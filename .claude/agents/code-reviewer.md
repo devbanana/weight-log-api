@@ -14,16 +14,16 @@ Always start by running the available analysis tools:
 
 ```bash
 # Run PHPStan at max level with strict rules
-composer analyze
+composer test:types
 
 # Validate architecture boundaries (including uncovered dependencies)
-vendor/bin/deptrac analyse --report-uncovered
+composer test:arch
 
 # Check code style
-vendor/bin/php-cs-fixer fix --dry-run --diff
+composer test:cs
 
 # Check test coverage (must be 100% for included classes)
-vendor/bin/phpunit --coverage-text 2>/dev/null | grep -A 5 "Summary:"
+composer test:coverage
 ```
 
 Report any issues found by these tools before proceeding with manual review.
