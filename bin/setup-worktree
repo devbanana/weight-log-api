@@ -52,14 +52,6 @@ if [[ -f "$SECRETS_DIR/.claude/settings.local.json" ]]; then
   echo "  Linked .claude/settings.local.json"
 fi
 
-# Link git hooks
-for hook_file in "$SECRETS_DIR"/hooks/*; do
-  if [[ -f "$hook_file" ]]; then
-    ln -sf "$hook_file" ".git/hooks/$(basename "$hook_file")"
-    echo "  Linked .git/hooks/$(basename "$hook_file")"
-  fi
-done
-
 echo ""
 echo "Running composer install..."
 composer install
