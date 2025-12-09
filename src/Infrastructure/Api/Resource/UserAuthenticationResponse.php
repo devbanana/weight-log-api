@@ -10,7 +10,10 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
  * Response DTO for the authentication endpoint.
  *
  * Contains the JWT token and expiration details after successful authentication.
- * Follows OAuth2 conventions (RFC 6749) with snake_case field names.
+ * Follows OAuth2 conventions with snake_case field names. Note that `expires_at`
+ * is a non-standard extension for client convenience.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc6749#section-5.1 OAuth2 Access Token Response
  */
 final readonly class UserAuthenticationResponse
 {
