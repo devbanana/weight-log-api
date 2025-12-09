@@ -102,7 +102,7 @@
             "assets:install %PUBLIC_DIR%": "symfony-cmd"
         },
         "fix:cs": "vendor/bin/php-cs-fixer fix --diff",
-        "test:arch": "vendor/bin/deptrac analyse --fail-on-uncovered",
+        "test:arch": "vendor/bin/deptrac analyse --fail-on-uncovered --report-uncovered",
         "test:behat": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat",
         "test:coverage": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --coverage-text | tee /dev/stderr | grep -q 'Classes: 100.00%' || (echo '\\n❌ Coverage must be 100% for all included classes' && exit 1)",
         "test:cs": "vendor/bin/php-cs-fixer fix --dry-run --diff",
