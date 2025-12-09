@@ -124,7 +124,7 @@ final class UserProjectionTest extends TestCase
         $this->findDocument('user-2');
         $this->findDocument('user-3');
 
-        self::assertSame(3, $this->collection->countDocuments([]));
+        self::assertSame(3, $this->collection->countDocuments());
     }
 
     public function testItStoresRegistrationTimestamp(): void

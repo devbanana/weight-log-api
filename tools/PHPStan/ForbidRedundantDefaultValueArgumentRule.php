@@ -86,7 +86,7 @@ final class ForbidRedundantDefaultValueArgumentRule implements Rule
 
         $parameters = $parametersAcceptor->getParameters();
 
-        return $this->checkArguments(array_values($args), $parameters, $scope);
+        return self::checkArguments(array_values($args), $parameters, $scope);
     }
 
     /**
@@ -99,7 +99,7 @@ final class ForbidRedundantDefaultValueArgumentRule implements Rule
     {
         return match (true) {
             $node instanceof FuncCall => $this->resolveFunctionCall($node, $scope),
-            $node instanceof MethodCall => $this->resolveMethodCall($node, $scope),
+            $node instanceof MethodCall => self::resolveMethodCall($node, $scope),
             $node instanceof StaticCall => $this->resolveStaticCall($node, $scope),
             $node instanceof New_ => $this->resolveConstructorCall($node, $scope),
             default => null,
@@ -135,7 +135,7 @@ final class ForbidRedundantDefaultValueArgumentRule implements Rule
     /**
      * Resolves reflection for a method call like: $obj->method(...).
      */
-    private function resolveMethodCall(MethodCall $node, Scope $scope): ?ParametersAcceptor
+    private static function resolveMethodCall(MethodCall $node, Scope $scope): ?ParametersAcceptor
     {
         // Dynamic method names like $obj->$method() can't be resolved
         if (!$node->name instanceof Node\Identifier) {
@@ -236,11 +236,12 @@ final class ForbidRedundantDefaultValueArgumentRule implements Rule
     /**
      * Compares each argument against its parameter's default value.
      *
-     * @param list<Arg> $args The arguments passed in the call
+     * @param list<Arg>                       $args       The arguments passed in the call
      * @param array<int, ParameterReflection> $parameters The parameter definitions
+     *
      * @return list<IdentifierRuleError>
      */
-    private function checkArguments(array $args, array $parameters, Scope $scope): array
+    private static function checkArguments(array $args, array $parameters, Scope $scope): array
     {
         $errors = [];
 
@@ -279,14 +280,15 @@ final class ForbidRedundantDefaultValueArgumentRule implements Rule
             // (even if $var happens to equal 'default' at runtime).
             if (self::typesAreIdentical($argType, $defaultValue)) {
                 $errors[] = RuleErrorBuilder::message(
-                    \sprintf(
+                    sprintf(
                         'Argument #%d ($%s) passes the default value. Consider omitting it or using named arguments.',
                         $i + 1,
                         $parameter->getName(),
                     ),
                 )
                     ->identifier('argument.redundantDefault')
-                    ->build();
+                    ->build()
+                ;
             }
         }
 

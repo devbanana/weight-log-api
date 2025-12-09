@@ -92,7 +92,7 @@ final class TokenResponseHeadersListenerTest extends TestCase
             $request->attributes->set('_api_resource_class', $resourceClass);
         }
 
-        $response = new Response('', $statusCode);
+        $response = new Response(status: $statusCode);
 
         return new ResponseEvent($kernel, $request, HttpKernelInterface::MAIN_REQUEST, $response);
     }
