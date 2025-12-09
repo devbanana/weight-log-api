@@ -64,6 +64,21 @@ final readonly class AuthenticateUserProcessor implements ProcessorInterface
             new SecurityUser($authData->userId, $authData->roles),
         );
 
-        return new UserAuthenticationResponse($token);
+        // 4. Extract expiration from token payload
+        $payload = $this->jwtManager->parse($token);
+
+        assert(isset($payload['exp'], $payload['iat']));
+        assert(is_int($payload['exp']) && is_int($payload['iat']));
+
+        $exp = $payload['exp'];
+        $iat = $payload['iat'];
+        $expiresAt = new \DateTimeImmutable("@{$exp}")->format(\DateTimeInterface::ATOM);
+
+        return new UserAuthenticationResponse(
+            accessToken: $token,
+            tokenType: 'Bearer',
+            expiresIn: $exp - $iat,
+            expiresAt: $expiresAt,
+        );
     }
 }

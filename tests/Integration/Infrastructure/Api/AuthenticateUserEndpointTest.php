@@ -14,19 +14,19 @@ use App\Infrastructure\Api\Resource\UserAuthenticationResource;
 use App\Infrastructure\Api\Resource\UserAuthenticationResponse;
 use App\Infrastructure\Api\State\AuthenticateUserProcessor;
 use App\Infrastructure\Security\SecurityUser;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Driving tests for the user authentication API endpoint.
  *
  * These tests verify that the incoming HTTP adapter (API Platform processor)
  * correctly transforms HTTP requests into queries/commands and generates JWT tokens.
+ *
+ * Note: Uses real JWT service (not mocked) to verify actual token generation.
  *
  * @internal
  */
@@ -50,11 +50,6 @@ final class AuthenticateUserEndpointTest extends WebTestCase
      */
     private CommandBusInterface $commandBus;
 
-    /**
-     * @var JWTTokenManagerInterface&MockObject
-     */
-    private JWTTokenManagerInterface $jwtManager;
-
     #[\Override]
     protected function setUp(): void
     {
@@ -64,18 +59,13 @@ final class AuthenticateUserEndpointTest extends WebTestCase
         $this->queryBus = $this->createMock(QueryBusInterface::class);
         self::getContainer()->set(QueryBusInterface::class, $this->queryBus);
 
-        // Mock the command bus for dispatching authenticate command
+        // Mock the command bus for dispatching login command
         $this->commandBus = $this->createMock(CommandBusInterface::class);
         self::getContainer()->set(CommandBusInterface::class, $this->commandBus);
-
-        // Mock the JWT manager for token generation
-        $this->jwtManager = $this->createMock(JWTTokenManagerInterface::class);
-        self::getContainer()->set(JWTTokenManagerInterface::class, $this->jwtManager);
     }
 
     public function testItAuthenticatesUserSuccessfully(): void
     {
-        // Arrange: Query returns user auth data
         $this->queryBus
             ->expects(self::once())
             ->method('dispatch')
@@ -87,7 +77,6 @@ final class AuthenticateUserEndpointTest extends WebTestCase
             ->willReturn(new UserAuthData('user-123'))
         ;
 
-        // Arrange: Command bus dispatches authenticate command
         $this->commandBus
             ->expects(self::once())
             ->method('dispatch')
@@ -99,31 +88,37 @@ final class AuthenticateUserEndpointTest extends WebTestCase
             }))
         ;
 
-        // Arrange: JWT manager creates token
-        $this->jwtManager
-            ->expects(self::once())
-            ->method('create')
-            ->with(self::callback(static function (UserInterface $user): bool {
-                self::assertSame('user-123', $user->getUserIdentifier());
-                self::assertContains('ROLE_USER', $user->getRoles());
-
-                return true;
-            }))
-            ->willReturn('jwt-token-123')
-        ;
-
-        // Act: POST to tokens endpoint
         $this->postJson('/api/tokens', [
             'email' => 'alice@example.com',
             'password' => 'SecurePass123!',
         ]);
 
-        // Assert: Returns 200 OK with token
         self::assertResponseStatusCodeSame(200);
 
         $data = $this->getJsonResponse();
-        self::assertArrayHasKey('token', $data);
-        self::assertSame('jwt-token-123', $data['token']);
+
+        self::assertArrayHasKey('access_token', $data);
+        self::assertIsString($data['access_token']);
+        self::assertNotEmpty($data['access_token']);
+
+        self::assertArrayHasKey('token_type', $data);
+        self::assertSame('Bearer', $data['token_type']);
+
+        self::assertArrayHasKey('expires_in', $data);
+        self::assertSame(3_600, $data['expires_in']);
+
+        self::assertArrayHasKey('expires_at', $data);
+        self::assertIsString($data['expires_at']);
+        $expiresAtDate = \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $data['expires_at']);
+        self::assertInstanceOf(\DateTimeImmutable::class, $expiresAtDate);
+        self::assertSame('+00:00', $expiresAtDate->format('P'), 'expires_at should be in UTC');
+
+        $expectedExpiresAt = new \DateTimeImmutable()->modify('+3600 seconds');
+        self::assertEqualsWithDelta(
+            $expectedExpiresAt->getTimestamp(),
+            $expiresAtDate->getTimestamp(),
+            5,
+        );
     }
 
     public function testItReturns401WhenUserNotFound(): void
@@ -139,12 +134,6 @@ final class AuthenticateUserEndpointTest extends WebTestCase
         $this->commandBus
             ->expects(self::never())
             ->method('dispatch')
-        ;
-
-        // Arrange: JWT manager should NOT be called
-        $this->jwtManager
-            ->expects(self::never())
-            ->method('create')
         ;
 
         // Act: POST with non-existent email
@@ -173,12 +162,6 @@ final class AuthenticateUserEndpointTest extends WebTestCase
             ->willThrowException(CouldNotAuthenticate::becauseInvalidCredentials())
         ;
 
-        // Arrange: JWT manager should NOT be called
-        $this->jwtManager
-            ->expects(self::never())
-            ->method('create')
-        ;
-
         // Act: POST with wrong password
         $this->postJson('/api/tokens', [
             'email' => 'alice@example.com',
@@ -194,7 +177,6 @@ final class AuthenticateUserEndpointTest extends WebTestCase
         // Arrange: No services should be called for invalid input
         $this->queryBus->expects(self::never())->method('dispatch');
         $this->commandBus->expects(self::never())->method('dispatch');
-        $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with invalid email
         $this->postJson('/api/tokens', [
@@ -211,7 +193,6 @@ final class AuthenticateUserEndpointTest extends WebTestCase
         // Arrange: No services should be called for invalid input
         $this->queryBus->expects(self::never())->method('dispatch');
         $this->commandBus->expects(self::never())->method('dispatch');
-        $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with empty email
         $this->postJson('/api/tokens', [
@@ -228,7 +209,6 @@ final class AuthenticateUserEndpointTest extends WebTestCase
         // Arrange: No services should be called for invalid input
         $this->queryBus->expects(self::never())->method('dispatch');
         $this->commandBus->expects(self::never())->method('dispatch');
-        $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with empty password
         $this->postJson('/api/tokens', [
@@ -245,7 +225,6 @@ final class AuthenticateUserEndpointTest extends WebTestCase
         // Arrange: No services should be called for invalid input
         $this->queryBus->expects(self::never())->method('dispatch');
         $this->commandBus->expects(self::never())->method('dispatch');
-        $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with no email field
         $this->postJson('/api/tokens', [
@@ -261,7 +240,6 @@ final class AuthenticateUserEndpointTest extends WebTestCase
         // Arrange: No services should be called for invalid input
         $this->queryBus->expects(self::never())->method('dispatch');
         $this->commandBus->expects(self::never())->method('dispatch');
-        $this->jwtManager->expects(self::never())->method('create');
 
         // Act: POST with no password field
         $this->postJson('/api/tokens', [
