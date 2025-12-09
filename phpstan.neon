@@ -1,5 +1,9 @@
 services:
     -
+        class: Tools\PHPStan\ForbidRedundantDefaultValueArgumentRule
+        tags:
+            - phpstan.rules.rule
+    -
         class: Tools\PHPStan\EventSourcedAggregatePropertiesExtension
         tags:
             - phpstan.properties.readWriteExtension
