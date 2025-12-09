@@ -8,6 +8,7 @@ use App\Application\MessageBus\CommandBusInterface;
 use App\Application\User\Command\RegisterUserCommand;
 use App\Domain\User\Exception\UserAlreadyExistsException;
 use App\Domain\User\ValueObject\Email;
+use App\Infrastructure\Api\EventListener\TokenResponseHeadersListener;
 use App\Infrastructure\Api\Resource\UserRegistrationResource;
 use App\Infrastructure\Api\State\RegisterUserProcessor;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -34,6 +35,7 @@ use Symfony\Component\Uid\UuidV7;
 #[CoversClass(RegisterUserProcessor::class)]
 #[CoversClass(UserRegistrationResource::class)]
 #[UsesClass(Email::class)]
+#[UsesClass(TokenResponseHeadersListener::class)]
 final class RegisterUserEndpointTest extends WebTestCase
 {
     use HttpHelper;
@@ -74,7 +76,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         ;
 
         // Act
-        $this->postJson('/api/auth/register', [
+        $this->postJson('/api/users', [
             'email' => 'test@example.com',
             'password' => 'SecurePass123!',
         ]);
@@ -99,7 +101,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         ;
 
         // Act
-        $this->postJson('/api/auth/register', [
+        $this->postJson('/api/users', [
             'email' => 'user@example.com',
             'password' => 'SecurePass123!',
         ]);
@@ -126,7 +128,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         ;
 
         // Act
-        $this->postJson('/api/auth/register', [
+        $this->postJson('/api/users', [
             'email' => 'TEST@EXAMPLE.COM',
             'password' => 'SecurePass123!',
         ]);
@@ -141,7 +143,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act
-        $this->postJson('/api/auth/register', [
+        $this->postJson('/api/users', [
             'email' => 'not-an-email',
             'password' => 'SecurePass123!',
         ]);
@@ -165,7 +167,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act
-        $this->postJson('/api/auth/register', ['email' => '', 'password' => 'SecurePass123!']);
+        $this->postJson('/api/users', ['email' => '', 'password' => 'SecurePass123!']);
 
         // Assert
         self::assertResponseStatusCodeSame(422);
@@ -178,7 +180,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act
-        $this->postJson('/api/auth/register', ['password' => 'SecurePass123!']);
+        $this->postJson('/api/users', ['password' => 'SecurePass123!']);
 
         // Assert (API Platform deserialization error)
         self::assertResponseStatusCodeSame(400);
@@ -191,7 +193,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act
-        $this->postJson('/api/auth/register', ['email' => 'test@example.com']);
+        $this->postJson('/api/users', ['email' => 'test@example.com']);
 
         // Assert (API Platform deserialization error)
         self::assertResponseStatusCodeSame(400);
@@ -204,7 +206,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act
-        $this->postJson('/api/auth/register', ['email' => 'test@example.com', 'password' => 'short']);
+        $this->postJson('/api/users', ['email' => 'test@example.com', 'password' => 'short']);
 
         // Assert
         self::assertResponseStatusCodeSame(422);
@@ -232,7 +234,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         ;
 
         // Act
-        $this->postJson('/api/auth/register', [
+        $this->postJson('/api/users', [
             'email' => 'duplicate@example.com',
             'password' => 'SecurePass123!',
         ]);
@@ -255,7 +257,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act (type mismatch during deserialization)
-        $this->postJson('/api/auth/register', ['email' => 12_345]);
+        $this->postJson('/api/users', ['email' => 12_345]);
 
         // Assert
         self::assertResponseStatusCodeSame(400);
@@ -267,7 +269,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act (type mismatch during deserialization)
-        $this->postJson('/api/auth/register', ['email' => null]);
+        $this->postJson('/api/users', ['email' => null]);
 
         // Assert
         self::assertResponseStatusCodeSame(400);
@@ -279,7 +281,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act
-        $this->postJson('/api/auth/register', '{invalid json}');
+        $this->postJson('/api/users', '{invalid json}');
 
         // Assert
         self::assertResponseStatusCodeSame(400);
@@ -291,7 +293,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus->expects(self::never())->method('dispatch');
 
         // Act (form data instead of JSON)
-        $this->client->request('POST', '/api/auth/register', ['email' => 'test@example.com']);
+        $this->client->request('POST', '/api/users', ['email' => 'test@example.com']);
 
         // Assert
         self::assertResponseStatusCodeSame(415);

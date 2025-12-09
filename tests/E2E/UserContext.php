@@ -58,7 +58,7 @@ final class UserContext implements Context
     #[When('I register with email :email and password :password')]
     public function iRegisterWithEmailAndPassword(string $email, string $password): void
     {
-        $this->response = $this->makeJsonRequest('POST', '/api/auth/register', [
+        $this->response = $this->makeJsonRequest('POST', '/api/users', [
             'email' => $email,
             'password' => $password,
         ]);
@@ -91,7 +91,7 @@ final class UserContext implements Context
     #[When('I log in with email :email and password :password')]
     public function iLogInWithEmailAndPassword(string $email, string $password): void
     {
-        $this->response = $this->makeJsonRequest('POST', '/api/auth/login', [
+        $this->response = $this->makeJsonRequest('POST', '/api/tokens', [
             'email' => $email,
             'password' => $password,
         ]);

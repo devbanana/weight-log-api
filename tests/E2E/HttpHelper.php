@@ -59,7 +59,21 @@ trait HttpHelper
         $content = self::getResponseContent($response);
         $data = json_decode($content, true, flags: JSON_THROW_ON_ERROR);
         assert(is_array($data));
-        Assert::keyExists($data, 'token', 'Response should contain a token');
-        Assert::notEmpty($data['token'], 'Token should not be empty');
+
+        // OAuth2-style response (RFC 6749)
+        Assert::keyExists($data, 'access_token', 'Response should contain access_token');
+        Assert::notEmpty($data['access_token'], 'access_token should not be empty');
+        Assert::keyExists($data, 'token_type', 'Response should contain token_type');
+        Assert::same($data['token_type'], 'Bearer', 'token_type should be Bearer');
+        Assert::keyExists($data, 'expires_in', 'Response should contain expires_in');
+        Assert::integer($data['expires_in'], 'expires_in should be an integer');
+        Assert::greaterThan($data['expires_in'], 0, 'expires_in should be positive');
+        Assert::keyExists($data, 'expires_at', 'Response should contain expires_at');
+        Assert::string($data['expires_at'], 'expires_at should be a string (ISO 8601)');
+
+        // Verify expires_at is a valid ISO 8601 date in the future
+        $expiresAt = \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $data['expires_at']);
+        Assert::isInstanceOf($expiresAt, \DateTimeImmutable::class, 'expires_at should be a valid ISO 8601 date');
+        Assert::greaterThan($expiresAt->getTimestamp(), time(), 'expires_at should be in the future');
     }
 }
