@@ -31,7 +31,7 @@ parameters:
 
     # Symfony-specific configuration
     symfony:
-        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+        containerXmlPath: var/cache/dev/App_Infrastructure_KernelDevDebugContainer.xml
 
     # Exclude generated files
     excludePaths:
