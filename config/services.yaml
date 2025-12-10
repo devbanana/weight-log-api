@@ -103,6 +103,14 @@ services:
     App\Application\Security\PasswordHasherInterface:
         alias: App\Infrastructure\Security\NativePasswordHasher
 
+    # Clock (PSR-20 using Symfony Clock with UTC)
+    Symfony\Component\Clock\NativeClock:
+        arguments:
+            - 'UTC'
+
+    Psr\Clock\ClockInterface:
+        alias: Symfony\Component\Clock\NativeClock
+
 when@test:
     services:
         # Make services public for testing

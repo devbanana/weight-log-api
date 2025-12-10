@@ -22,6 +22,10 @@ deptrac:
       collectors:
         - type: classLike
           value: WebMozart\\Assert\\.*
+    - name: PSR
+      collectors:
+        - type: classLike
+          value: Psr\\.*
     - name: MongoDB
       collectors:
         - type: classLike
@@ -76,6 +80,7 @@ deptrac:
       - Assertions
     Application:
       - Domain
+      - PSR
     Infrastructure:
       - Application
       - Domain
