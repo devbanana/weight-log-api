@@ -43,14 +43,12 @@
 
         <!-- Commands and Handlers are tested via Behat use case tests, not PHPUnit -->
         <!-- Exceptions are simple DTOs with no logic worth unit testing -->
-        <!-- Kernel is framework boilerplate (compiler passes are tested directly) -->
         <exclude>
             <directory>src/Application/*/Command</directory>
             <directory>src/Application/*/Query</directory>
             <directory>src/Domain/*/Event</directory>
             <directory>src/Domain/*/Exception</directory>
             <directory>src/Domain/Common/Exception</directory>
-            <file>src/Infrastructure/Kernel.php</file>
         </exclude>
 
         <deprecationTrigger>

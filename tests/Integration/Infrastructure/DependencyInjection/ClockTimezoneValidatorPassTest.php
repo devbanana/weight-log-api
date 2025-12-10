@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Infrastructure\DependencyInjection;
 
 use App\Infrastructure\DependencyInjection\ClockTimezoneValidatorPass;
+use App\Infrastructure\Kernel;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
@@ -15,6 +16,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
  * @internal
  */
 #[CoversClass(ClockTimezoneValidatorPass::class)]
+#[CoversClass(Kernel::class)]
 final class ClockTimezoneValidatorPassTest extends TestCase
 {
     public function testItPassesWhenClockIsConfiguredWithUtc(): void
@@ -75,6 +77,16 @@ final class ClockTimezoneValidatorPassTest extends TestCase
 
         // If we get here without exception, the test passes
         $this->addToAssertionCount(1);
+    }
+
+    public function testKernelFailsToBootWithNonUtcClock(): void
+    {
+        $kernel = new Kernel('invalid_clock_test', false);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Clock must be configured with UTC timezone');
+
+        $kernel->boot();
     }
 
     private static function createContainerWithTimezone(?string $timezone): ContainerBuilder

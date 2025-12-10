@@ -132,3 +132,10 @@ when@test:
 
         App\Application\MessageBus\CommandBusInterface:
             alias: App\Infrastructure\MessageBus\MessengerCommandBus
+
+# Test environment with invalid clock configuration (for compiler pass testing)
+when@invalid_clock_test:
+    services:
+        Symfony\Component\Clock\NativeClock:
+            arguments:
+                - 'America/New_York'
