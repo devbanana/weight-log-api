@@ -262,7 +262,6 @@ src/
 │       └── Exception/
 │
 ├── Application/            # Layer 2: Use cases (depends on Domain only)
-│   ├── Clock/              # ClockInterface (port)
 │   ├── MessageBus/         # CommandBusInterface (port)
 │   ├── Security/           # PasswordHasherInterface (port)
 │   └── {Context}/
@@ -271,8 +270,8 @@ src/
 │
 └── Infrastructure/         # Layer 3: Adapters (depends on everything)
     ├── Api/                # API Platform resources + state processors
-    ├── Clock/              # SystemClock adapter
     ├── Console/            # CLI commands
+    ├── DependencyInjection/ # Compiler passes (e.g., clock timezone validation)
     ├── MessageBus/         # Symfony Messenger adapter
     ├── Persistence/        # EventStore + ReadModel adapters (MongoDB)
     ├── Projection/         # Event handlers updating read models
