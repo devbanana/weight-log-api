@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App;
+namespace App\Infrastructure;
 
 use App\Infrastructure\DependencyInjection\ClockTimezoneValidatorPass;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;

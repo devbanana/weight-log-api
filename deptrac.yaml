@@ -78,6 +78,10 @@ deptrac:
       collectors:
         - type: classLike
           value: Symfony\\Component\\DependencyInjection\\.*
+    - name: SymfonyFrameworkBundle
+      collectors:
+        - type: classLike
+          value: Symfony\\Bundle\\FrameworkBundle\\.*
 
   ruleset:
     Domain:
@@ -102,3 +106,4 @@ deptrac:
       - ApiPlatform
       - LexikJWT
       - SymfonySecurity
+      - SymfonyFrameworkBundle

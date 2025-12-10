@@ -16,7 +16,7 @@ return new Config()
         ->withExtension(new Extension(SymfonyExtension::class, [
             'bootstrap' => 'tests/bootstrap.php',
             'kernel' => [
-                'class' => 'App\Kernel',
+                'class' => 'App\Infrastructure\Kernel',
                 'environment' => 'test',
                 'debug' => true,
             ],

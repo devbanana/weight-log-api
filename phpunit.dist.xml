@@ -16,7 +16,7 @@
         <ini name="display_errors" value="1" />
         <ini name="error_reporting" value="-1" />
         <server name="APP_ENV" value="test" force="true" />
-        <server name="KERNEL_CLASS" value="App\Kernel" />
+        <server name="KERNEL_CLASS" value="App\Infrastructure\Kernel" />
         <server name="SHELL_VERBOSITY" value="-1" />
     </php>
 
@@ -50,7 +50,7 @@
             <directory>src/Domain/*/Event</directory>
             <directory>src/Domain/*/Exception</directory>
             <directory>src/Domain/Common/Exception</directory>
-            <file>src/Kernel.php</file>
+            <file>src/Infrastructure/Kernel.php</file>
         </exclude>
 
         <deprecationTrigger>
