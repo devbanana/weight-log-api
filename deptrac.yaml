@@ -30,38 +30,10 @@ deptrac:
       collectors:
         - type: classLike
           value: ^MongoDB\\.*
-    - name: SymfonySerializer
+    - name: Symfony
       collectors:
         - type: classLike
-          value: Symfony\\Component\\Serializer\\.*
-    - name: SymfonyMessenger
-      collectors:
-        - type: classLike
-          value: Symfony\\Component\\Messenger\\.*
-    - name: SymfonyValidator
-      collectors:
-        - type: classLike
-          value: Symfony\\Component\\Validator\\.*
-    - name: SymfonyUid
-      collectors:
-        - type: classLike
-          value: Symfony\\Component\\Uid\\.*
-    - name: SymfonyHttpKernel
-      collectors:
-        - type: classLike
-          value: Symfony\\Component\\HttpKernel\\.*
-    - name: SymfonyHttpFoundation
-      collectors:
-        - type: classLike
-          value: Symfony\\Component\\HttpFoundation\\.*
-    - name: SymfonyEventDispatcher
-      collectors:
-        - type: classLike
-          value: Symfony\\Component\\EventDispatcher\\.*
-    - name: SymfonyConsole
-      collectors:
-        - type: classLike
-          value: Symfony\\Component\\Console\\.*
+          value: Symfony\\.*
     - name: ApiPlatform
       collectors:
         - type: classLike
@@ -70,18 +42,6 @@ deptrac:
       collectors:
         - type: classLike
           value: Lexik\\Bundle\\JWTAuthenticationBundle\\.*
-    - name: SymfonySecurity
-      collectors:
-        - type: classLike
-          value: Symfony\\Component\\Security\\.*
-    - name: SymfonyDependencyInjection
-      collectors:
-        - type: classLike
-          value: Symfony\\Component\\DependencyInjection\\.*
-    - name: SymfonyFrameworkBundle
-      collectors:
-        - type: classLike
-          value: Symfony\\Bundle\\FrameworkBundle\\.*
 
   ruleset:
     Domain:
@@ -94,16 +54,6 @@ deptrac:
       - Domain
       - PSR
       - MongoDB
-      - SymfonySerializer
-      - SymfonyMessenger
-      - SymfonyValidator
-      - SymfonyUid
-      - SymfonyHttpKernel
-      - SymfonyHttpFoundation
-      - SymfonyEventDispatcher
-      - SymfonyConsole
-      - SymfonyDependencyInjection
+      - Symfony
       - ApiPlatform
       - LexikJWT
-      - SymfonySecurity
-      - SymfonyFrameworkBundle
