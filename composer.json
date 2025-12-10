@@ -103,14 +103,14 @@
         },
         "fix:cs": "vendor/bin/php-cs-fixer fix --diff",
         "test:arch": "vendor/bin/deptrac analyse --fail-on-uncovered --report-uncovered",
-        "test:behat": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat",
-        "test:coverage": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --coverage-text | tee /dev/stderr | grep -q 'Classes: 100.00%' || (echo '\\n❌ Coverage must be 100% for all included classes' && exit 1)",
+        "test:behat": "vendor/bin/behat",
+        "test:coverage": "vendor/bin/phpunit --coverage-text | tee /dev/stderr | grep -q 'Classes: 100.00%' || (echo '\\n❌ Coverage must be 100% for all included classes' && exit 1)",
         "test:cs": "vendor/bin/php-cs-fixer fix --dry-run --diff",
-        "test:e2e": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat --suite=e2e",
-        "test:integration": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --testsuite=integration",
-        "test:phpunit": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit",
+        "test:e2e": "vendor/bin/behat --suite=e2e",
+        "test:integration": "vendor/bin/phpunit --testsuite=integration",
+        "test:phpunit": "vendor/bin/phpunit",
         "test:types": "vendor/bin/phpstan analyse --memory-limit=1G",
-        "test:unit": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/phpunit --testsuite=unit",
-        "test:usecase": "env -u APP_ENV -u JWT_SECRET_KEY -u JWT_PUBLIC_KEY -u JWT_PASSPHRASE vendor/bin/behat --suite=usecase"
+        "test:unit": "vendor/bin/phpunit --testsuite=unit",
+        "test:usecase": "vendor/bin/behat --suite=usecase"
     }
 }
