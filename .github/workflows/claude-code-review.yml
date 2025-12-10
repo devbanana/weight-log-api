@@ -77,9 +77,20 @@ jobs:
 
                       Please review this pull request thoroughly. Use the repository's CLAUDE.md for guidance on style and conventions.
 
+                      ## Gather Context First
+
+                      Before reviewing, determine if this is an initial review or a follow-up:
+
+                      1. Run `gh pr view ${{ github.event.pull_request.number }} --comments` to see all previous comments on this PR
+                      2. Run `gh pr view ${{ github.event.pull_request.number }} --json commits --jq '.commits[] | "\(.oid[0:7]) \(.messageHeadline)"'` to see the commit history
+
+                      Check if there are any previous review comments from Claude (look for "Claude" in the author or comments that follow the review format below).
+
                       ## Review Process
 
-                      1. First, run static analysis tools:
+                      ### If this is the FIRST review (no previous Claude comments):
+
+                      1. Run static analysis tools:
                          - `composer test:types` (PHPStan)
                          - `composer test:arch` (Deptrac)
                          - `composer test:cs` (code style)
@@ -97,9 +108,33 @@ jobs:
                          - Layer boundary violations
                          - Event sourcing patterns
 
+                      ### If this is a FOLLOW-UP review (previous Claude comments exist):
+
+                      Do NOT use the code-reviewer or architecture-guardian agents. Instead:
+
+                      1. Run static analysis tools to verify no new issues:
+                         - `composer test:types` (PHPStan)
+                         - `composer test:arch` (Deptrac)
+                         - `composer test:cs` (code style)
+
+                      2. Review the changes made since the last review:
+                         - Identify which commits were added after the last Claude review
+                         - Focus ONLY on the new/modified code in those commits
+                         - Check if previous feedback was addressed correctly
+
+                      3. Verify previously raised issues:
+                         - Which issues from the previous review have been fixed?
+                         - Are there any remaining unresolved issues?
+                         - Did the fixes introduce any new problems?
+
                       ## Output
 
                       Compile your findings into a constructive review. Be specific about issues and provide actionable feedback.
+
+                      If this is a follow-up review:
+                      - Acknowledge which previous issues have been addressed
+                      - Focus on any remaining or new issues
+                      - Note if previous feedback was implemented correctly
 
                       Use `gh pr comment` with your Bash tool to post your review as a comment on the PR.
 
