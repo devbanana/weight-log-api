@@ -22,6 +22,10 @@ deptrac:
       collectors:
         - type: classLike
           value: WebMozart\\Assert\\.*
+    - name: PSR
+      collectors:
+        - type: classLike
+          value: Psr\\.*
     - name: MongoDB
       collectors:
         - type: classLike
@@ -70,15 +74,21 @@ deptrac:
       collectors:
         - type: classLike
           value: Symfony\\Component\\Security\\.*
+    - name: SymfonyDependencyInjection
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\DependencyInjection\\.*
 
   ruleset:
     Domain:
       - Assertions
     Application:
       - Domain
+      - PSR
     Infrastructure:
       - Application
       - Domain
+      - PSR
       - MongoDB
       - SymfonySerializer
       - SymfonyMessenger
@@ -88,6 +98,7 @@ deptrac:
       - SymfonyHttpFoundation
       - SymfonyEventDispatcher
       - SymfonyConsole
+      - SymfonyDependencyInjection
       - ApiPlatform
       - LexikJWT
       - SymfonySecurity

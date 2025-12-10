@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\User\Command;
 
-use App\Application\Clock\ClockInterface;
 use App\Application\Security\PasswordHasherInterface;
 use App\Domain\Common\EventStore\EventStoreInterface;
 use App\Domain\User\Exception\UserAlreadyExistsException;
@@ -13,6 +12,7 @@ use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\Email;
 use App\Domain\User\ValueObject\PlainPassword;
 use App\Domain\User\ValueObject\UserId;
+use Psr\Clock\ClockInterface;
 
 /**
  * Handler for RegisterUserCommand.

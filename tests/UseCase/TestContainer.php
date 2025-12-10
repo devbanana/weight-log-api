@@ -10,6 +10,7 @@ use App\Application\User\Command\RegisterUserCommand;
 use App\Application\User\Command\RegisterUserHandler;
 use App\Application\User\Query\FindUserAuthDataByEmailHandler;
 use App\Application\User\Query\FindUserAuthDataByEmailQuery;
+use Symfony\Component\Clock\MockClock;
 
 /**
  * Test service container that provides spy objects for use case testing.
@@ -23,7 +24,7 @@ final class TestContainer
 
     public function __construct()
     {
-        $clock = new FrozenClock();
+        $clock = new MockClock('2025-01-15 12:00:00 UTC');
         $passwordHasher = new FakePasswordHasher();
         $userReadModel = new InMemoryUserReadModel();
 

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Application\User\Command;
 
-use App\Application\Clock\ClockInterface;
 use App\Domain\Common\EventStore\EventStoreInterface;
 use App\Domain\User\Exception\CouldNotAuthenticate;
 use App\Domain\User\User;
 use App\Domain\User\ValueObject\PlainPassword;
+use Psr\Clock\ClockInterface;
 
 /**
  * Handler for LoginCommand.
