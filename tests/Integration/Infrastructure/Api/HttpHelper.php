@@ -20,9 +20,9 @@ trait HttpHelper
             ? json_encode($payload, JSON_THROW_ON_ERROR)
             : $payload;
 
-        $this->client->request('POST', $uri, [], [], [
+        $this->client->request('POST', $uri, server: [
             'CONTENT_TYPE' => 'application/json',
-        ], $body);
+        ], content: $body);
     }
 
     /**
