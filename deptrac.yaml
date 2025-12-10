@@ -74,6 +74,10 @@ deptrac:
       collectors:
         - type: classLike
           value: Symfony\\Component\\Security\\.*
+    - name: SymfonyDependencyInjection
+      collectors:
+        - type: classLike
+          value: Symfony\\Component\\DependencyInjection\\.*
 
   ruleset:
     Domain:
@@ -84,6 +88,7 @@ deptrac:
     Infrastructure:
       - Application
       - Domain
+      - PSR
       - MongoDB
       - SymfonySerializer
       - SymfonyMessenger
@@ -93,6 +98,7 @@ deptrac:
       - SymfonyHttpFoundation
       - SymfonyEventDispatcher
       - SymfonyConsole
+      - SymfonyDependencyInjection
       - ApiPlatform
       - LexikJWT
       - SymfonySecurity
