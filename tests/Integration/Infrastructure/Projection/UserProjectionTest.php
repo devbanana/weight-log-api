@@ -7,8 +7,8 @@ namespace App\Tests\Integration\Infrastructure\Projection;
 use App\Domain\User\Event\UserLoggedIn;
 use App\Domain\User\Event\UserRegistered;
 use App\Infrastructure\Projection\UserProjection;
+use App\Tests\Integration\Infrastructure\MongoHelper;
 use MongoDB\BSON\UTCDateTime;
-use MongoDB\Client;
 use MongoDB\Collection;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -32,15 +32,8 @@ final class UserProjectionTest extends TestCase
     #[\Override]
     protected function setUp(): void
     {
-        $mongoUrl = $_ENV['MONGODB_URL'];
-        self::assertIsString($mongoUrl, 'MONGODB_URL must be set in environment for tests');
-        $database = $_ENV['MONGODB_DATABASE'];
-        self::assertIsString($database, 'MONGODB_DATABASE must be set in environment for tests');
-
-        $client = new Client($mongoUrl);
-        $this->collection = $client->selectCollection($database, 'users');
+        $this->collection = self::getMongoDatabase()->selectCollection('users');
         $this->collection->drop();
-
         $this->projection = new UserProjection($this->collection);
     }
 
@@ -57,7 +50,7 @@ final class UserProjectionTest extends TestCase
 
         $this->projection->onUserRegistered($event);
 
-        $document = $this->findDocument('user-123');
+        $document = self::findDocument($this->collection, 'user-123');
         self::assertSame('john@example.com', $document['email']);
     }
 
@@ -74,7 +67,7 @@ final class UserProjectionTest extends TestCase
         $this->projection->onUserRegistered($event);
 
         // Verify the exact value stored in MongoDB (not via read model which might normalize)
-        $document = $this->findDocument('user-456');
+        $document = self::findDocument($this->collection, 'user-456');
         self::assertSame('John.Doe@Example.COM', $document['email']);
     }
 
@@ -120,9 +113,9 @@ final class UserProjectionTest extends TestCase
         ));
 
         // Verify all three documents exist
-        $this->findDocument('user-1');
-        $this->findDocument('user-2');
-        $this->findDocument('user-3');
+        self::findDocument($this->collection, 'user-1');
+        self::findDocument($this->collection, 'user-2');
+        self::findDocument($this->collection, 'user-3');
 
         self::assertSame(3, $this->collection->countDocuments());
     }
@@ -139,7 +132,7 @@ final class UserProjectionTest extends TestCase
 
         $this->projection->onUserRegistered($event);
 
-        $document = $this->findDocument('user-timestamp');
+        $document = self::findDocument($this->collection, 'user-timestamp');
         self::assertArrayHasKey('registered_at', (array) $document);
 
         $storedDate = $document['registered_at'];
@@ -158,7 +151,7 @@ final class UserProjectionTest extends TestCase
 
         $this->projection->onUserRegistered($event);
 
-        $document = $this->findDocument('user-password-test');
+        $document = self::findDocument($this->collection, 'user-password-test');
         self::assertArrayHasKey('hashed_password', (array) $document);
         self::assertSame('$2y$10$abcdefghijklmnopqrstuv', $document['hashed_password']);
     }
@@ -183,7 +176,7 @@ final class UserProjectionTest extends TestCase
         $this->projection->onUserLoggedIn($loginEvent);
 
         // Verify last_login_at was updated
-        $document = $this->findDocument('user-login-test');
+        $document = self::findDocument($this->collection, 'user-login-test');
         self::assertArrayHasKey('last_login_at', (array) $document);
 
         $lastLoginAt = $document['last_login_at'];
@@ -208,7 +201,7 @@ final class UserProjectionTest extends TestCase
             occurredAt: $firstLoginAt,
         ));
 
-        $document = $this->findDocument('user-multi-login');
+        $document = self::findDocument($this->collection, 'user-multi-login');
         $firstLastLoginAt = $document['last_login_at'];
         self::assertInstanceOf(UTCDateTime::class, $firstLastLoginAt);
         self::assertDateTimeEquals($firstLoginAt, $firstLastLoginAt);
@@ -220,7 +213,7 @@ final class UserProjectionTest extends TestCase
             occurredAt: $secondLoginAt,
         ));
 
-        $document = $this->findDocument('user-multi-login');
+        $document = self::findDocument($this->collection, 'user-multi-login');
         $secondLastLoginAt = $document['last_login_at'];
         self::assertInstanceOf(UTCDateTime::class, $secondLastLoginAt);
         self::assertDateTimeEquals($secondLoginAt, $secondLastLoginAt);
@@ -249,7 +242,7 @@ final class UserProjectionTest extends TestCase
         $count = $this->collection->countDocuments(['_id' => 'user-idempotent-login']);
         self::assertSame(1, $count);
 
-        $document = $this->findDocument('user-idempotent-login');
+        $document = self::findDocument($this->collection, 'user-idempotent-login');
         $lastLoginAt = $document['last_login_at'];
         self::assertInstanceOf(UTCDateTime::class, $lastLoginAt);
         self::assertDateTimeEquals(

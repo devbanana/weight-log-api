@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Infrastructure\Console;
 
 use App\Infrastructure\Console\CreateMongoIndicesCommand;
-use MongoDB\Client;
+use App\Tests\Integration\Infrastructure\MongoHelper;
 use MongoDB\Database;
 use MongoDB\Driver\Exception\BulkWriteException;
 use MongoDB\Driver\Exception\CommandException;
@@ -25,18 +25,14 @@ use Symfony\Component\Console\Tester\CommandTester;
 #[CoversClass(CreateMongoIndicesCommand::class)]
 final class CreateMongoIndicesCommandTest extends KernelTestCase
 {
+    use MongoHelper;
+
     private Database $database;
 
     #[\Override]
     protected function setUp(): void
     {
-        $mongoUrl = $_ENV['MONGODB_URL'];
-        self::assertIsString($mongoUrl, 'MONGODB_URL must be set');
-        $databaseName = $_ENV['MONGODB_DATABASE'];
-        self::assertIsString($databaseName, 'MONGODB_DATABASE must be set');
-
-        $client = new Client($mongoUrl);
-        $this->database = $client->selectDatabase($databaseName);
+        $this->database = self::getMongoDatabase();
 
         // Drop collections to ensure clean state
         $this->database->dropCollection('events');

@@ -10,8 +10,8 @@ use App\Domain\Common\Exception\ConcurrencyException;
 use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\User;
 use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
+use App\Tests\Integration\Infrastructure\MongoHelper;
 use App\Tests\UseCase\InMemoryEventStore;
-use MongoDB\Client;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -33,6 +33,8 @@ use Symfony\Component\Serializer\Serializer;
 #[CoversClass(MongoEventStore::class)]
 final class EventStoreContractTest extends TestCase
 {
+    use MongoHelper;
+
     private const string AGGREGATE_TYPE = User::class;
 
     #[DataProvider('eventStoreProvider')]
@@ -270,13 +272,7 @@ final class EventStoreContractTest extends TestCase
 
     private static function createMongoEventStore(): MongoEventStore
     {
-        $mongoUrl = $_ENV['MONGODB_URL'];
-        self::assertIsString($mongoUrl, 'MONGODB_URL must be set in environment for tests');
-        $database = $_ENV['MONGODB_DATABASE'];
-        self::assertIsString($database, 'MONGODB_DATABASE must be set in environment for tests');
-
-        $client = new Client($mongoUrl);
-        $collection = $client->selectCollection($database, 'events');
+        $collection = self::getMongoDatabase()->selectCollection('events');
         $collection->drop();
 
         $serializer = new Serializer([

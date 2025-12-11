@@ -9,8 +9,8 @@ use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\Email;
 use App\Infrastructure\Persistence\MongoDB\MongoUserReadModel;
 use App\Infrastructure\Projection\UserProjection;
+use App\Tests\Integration\Infrastructure\MongoHelper;
 use App\Tests\UseCase\InMemoryUserReadModel;
-use MongoDB\Client;
 use MongoDB\Collection;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -30,6 +30,8 @@ use PHPUnit\Framework\TestCase;
 #[UsesClass(UserProjection::class)]
 final class UserReadModelContractTest extends TestCase
 {
+    use MongoHelper;
+
     #[DataProvider('readModelProvider')]
     public function testItReturnsFalseForNonExistentEmail(UserReadModelInterface $readModel): void
     {
@@ -55,7 +57,8 @@ final class UserReadModelContractTest extends TestCase
     {
         yield 'InMemory' => [new InMemoryUserReadModel()];
 
-        $mongoCollection = self::createMongoCollection();
+        $mongoCollection = self::getMongoDatabase()->selectCollection('users');
+        $mongoCollection->drop();
 
         yield 'MongoDB' => [new MongoUserReadModel($mongoCollection)];
     }
@@ -148,26 +151,13 @@ final class UserReadModelContractTest extends TestCase
             self::createInMemorySeeder($inMemoryReadModel),
         ];
 
-        $mongoCollection = self::createMongoCollection();
+        $mongoCollection = self::getMongoDatabase()->selectCollection('users');
+        $mongoCollection->drop();
 
         yield 'MongoDB' => [
             new MongoUserReadModel($mongoCollection),
             self::createMongoSeeder($mongoCollection),
         ];
-    }
-
-    private static function createMongoCollection(): Collection
-    {
-        $mongoUrl = $_ENV['MONGODB_URL'];
-        assert(is_string($mongoUrl), 'MONGODB_URL must be set in environment for tests');
-        $database = $_ENV['MONGODB_DATABASE'];
-        assert(is_string($database), 'MONGODB_DATABASE must be set in environment for tests');
-
-        $client = new Client($mongoUrl);
-        $collection = $client->selectCollection($database, 'users');
-        $collection->drop();
-
-        return $collection;
     }
 
     /**
