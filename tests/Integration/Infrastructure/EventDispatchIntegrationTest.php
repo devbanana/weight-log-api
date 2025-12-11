@@ -14,7 +14,6 @@ use App\Infrastructure\Persistence\EventStore\DispatchingEventStore;
 use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
 use App\Infrastructure\Persistence\MongoDB\MongoUserReadModel;
 use App\Infrastructure\Projection\UserProjection;
-use MongoDB\Client;
 use MongoDB\Collection;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
@@ -39,9 +38,10 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 #[UsesClass(UserProjection::class)]
 final class EventDispatchIntegrationTest extends KernelTestCase
 {
+    use MongoHelper;
+
     private EventStoreInterface $eventStore;
     private UserReadModelInterface $userReadModel;
-    private Collection $eventsCollection;
     private Collection $usersCollection;
 
     #[\Override]
@@ -55,16 +55,9 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $this->userReadModel = $container->get(UserReadModelInterface::class);
 
         // Clean up MongoDB collections before each test
-        $mongoUrl = $_ENV['MONGODB_URL'];
-        self::assertIsString($mongoUrl, 'MONGODB_URL must be set in environment for tests');
-        $database = $_ENV['MONGODB_DATABASE'];
-        self::assertIsString($database, 'MONGODB_DATABASE must be set in environment for tests');
-
-        $client = new Client($mongoUrl);
-        $this->eventsCollection = $client->selectCollection($database, 'events');
-        $this->usersCollection = $client->selectCollection($database, 'users');
-
-        $this->eventsCollection->drop();
+        $database = self::getMongoDatabase();
+        $database->selectCollection('events')->drop();
+        $this->usersCollection = $database->selectCollection('users');
         $this->usersCollection->drop();
     }
 

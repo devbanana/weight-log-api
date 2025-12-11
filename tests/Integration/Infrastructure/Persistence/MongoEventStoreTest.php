@@ -7,8 +7,8 @@ namespace App\Tests\Integration\Infrastructure\Persistence;
 use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\User;
 use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
+use App\Tests\Integration\Infrastructure\MongoHelper;
 use MongoDB\BSON\UTCDateTime;
-use MongoDB\Client;
 use MongoDB\Collection;
 use MongoDB\Model\BSONDocument;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -32,6 +32,8 @@ use Symfony\Component\Serializer\Serializer;
 #[CoversClass(MongoEventStore::class)]
 final class MongoEventStoreTest extends TestCase
 {
+    use MongoHelper;
+
     private const string AGGREGATE_TYPE = User::class;
 
     /**
@@ -41,7 +43,8 @@ final class MongoEventStoreTest extends TestCase
      */
     public function testItStoresOccurredAtAsBsonUtcDateTime(): void
     {
-        $collection = self::createMongoCollection();
+        $collection = self::getMongoDatabase()->selectCollection('events');
+        $collection->drop();
         $eventStore = self::createMongoEventStore($collection);
 
         $aggregateId = 'user-occurred-at-test';
@@ -78,20 +81,6 @@ final class MongoEventStoreTest extends TestCase
             $specificTime->format('Y-m-d H:i:s'),
             $storedDateTime->format('Y-m-d H:i:s'),
         );
-    }
-
-    private static function createMongoCollection(): Collection
-    {
-        $mongoUrl = $_ENV['MONGODB_URL'];
-        self::assertIsString($mongoUrl, 'MONGODB_URL must be set in environment for tests');
-        $database = $_ENV['MONGODB_DATABASE'];
-        self::assertIsString($database, 'MONGODB_DATABASE must be set in environment for tests');
-
-        $client = new Client($mongoUrl);
-        $collection = $client->selectCollection($database, 'events');
-        $collection->drop();
-
-        return $collection;
     }
 
     private static function createMongoEventStore(Collection $collection): MongoEventStore
