@@ -24,7 +24,7 @@ final class TestContainer
 
     public function __construct()
     {
-        $clock = new MockClock('2025-01-15 12:00:00 UTC');
+        $clock = new MockClock('2025-12-12 12:00:00 UTC');
         $passwordHasher = new FakePasswordHasher();
         $userReadModel = new InMemoryUserReadModel();
 
