@@ -6,7 +6,7 @@ namespace App\Tests\Integration\Infrastructure\Api;
 
 use App\Application\MessageBus\CommandBusInterface;
 use App\Application\User\Command\RegisterUserCommand;
-use App\Domain\User\Exception\UserAlreadyExistsException;
+use App\Domain\User\Exception\CouldNotRegister;
 use App\Domain\User\ValueObject\Email;
 use App\Infrastructure\Api\EventListener\TokenResponseHeadersListener;
 use App\Infrastructure\Api\Resource\UserRegistrationResource;
@@ -228,7 +228,7 @@ final class RegisterUserEndpointTest extends WebTestCase
         $this->commandBus
             ->expects(self::once())
             ->method('dispatch')
-            ->willThrowException(UserAlreadyExistsException::withEmail(
+            ->willThrowException(CouldNotRegister::becauseEmailIsAlreadyInUse(
                 Email::fromString('duplicate@example.com'),
             ))
         ;

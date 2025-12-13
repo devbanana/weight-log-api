@@ -367,7 +367,7 @@ Domain exceptions are translated to HTTP exceptions in infrastructure processors
 // Infrastructure/Api/State/RegisterUserProcessor.php
 try {
     $this->commandBus->dispatch($command);
-} catch (UserAlreadyExistsException $e) {
+} catch (CouldNotRegister $e) {
     throw new ConflictHttpException($e->getMessage(), $e);
 }
 ```
@@ -386,7 +386,7 @@ Domain exceptions follow a descriptive naming pattern that reads as a sentence:
 // ✅ CORRECT: Reads as "Could not register because email address is already in use"
 final class CouldNotRegister extends \DomainException
 {
-    public static function becauseEmailAddressIsAlreadyInUse(Email $email): self
+    public static function becauseEmailIsAlreadyInUse(Email $email): self
     {
         return new self(sprintf('Could not register: email "%s" is already in use.', $email->asString()));
     }
@@ -414,7 +414,7 @@ final class UserAlreadyExistsException extends \DomainException
 ```
 
 **Benefits**:
-- Exception usage reads naturally: `throw CouldNotRegister::becauseEmailAddressIsAlreadyInUse($email)`
+- Exception usage reads naturally: `throw CouldNotRegister::becauseEmailIsAlreadyInUse($email)`
 - Groups related failures under one class (all registration failures in `CouldNotRegister`)
 - Factory methods are self-documenting
 

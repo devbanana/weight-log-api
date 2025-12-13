@@ -9,7 +9,7 @@ use App\Application\User\Command\RegisterUserCommand;
 use App\Application\User\Query\FindUserAuthDataByEmailQuery;
 use App\Domain\User\Event\UserLoggedIn;
 use App\Domain\User\Exception\CouldNotAuthenticate;
-use App\Domain\User\Exception\UserAlreadyExistsException;
+use App\Domain\User\Exception\CouldNotRegister;
 use App\Domain\User\User;
 use Behat\Behat\Context\Context;
 use Behat\Step\Given;
@@ -86,8 +86,8 @@ final class UserContext implements Context
     {
         Assert::isInstanceOf(
             $this->caughtException,
-            UserAlreadyExistsException::class,
-            'Expected UserAlreadyExistsException to be thrown',
+            CouldNotRegister::class,
+            'Expected CouldNotRegister exception to be thrown',
         );
     }
 

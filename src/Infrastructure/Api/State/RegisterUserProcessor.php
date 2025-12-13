@@ -8,7 +8,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Application\MessageBus\CommandBusInterface;
 use App\Application\User\Command\RegisterUserCommand;
-use App\Domain\User\Exception\UserAlreadyExistsException;
+use App\Domain\User\Exception\CouldNotRegister;
 use App\Infrastructure\Api\Resource\UserRegistrationResource;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Uid\Uuid;
@@ -42,7 +42,7 @@ final readonly class RegisterUserProcessor implements ProcessorInterface
 
         try {
             $this->commandBus->dispatch($command);
-        } catch (UserAlreadyExistsException $e) {
+        } catch (CouldNotRegister $e) {
             throw new ConflictHttpException($e->getMessage(), $e);
         }
     }
