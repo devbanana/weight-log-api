@@ -374,6 +374,50 @@ try {
 
 **Pattern**: Catch domain exceptions in processors, wrap them in appropriate Symfony HTTP exceptions (`ConflictHttpException`, `NotFoundHttpException`, `BadRequestHttpException`, etc.).
 
+### DDD-Style Exception Naming
+
+Domain exceptions follow a descriptive naming pattern that reads as a sentence:
+
+**Class naming**: `CouldNot[Action]` - describes what action failed
+
+**Factory method naming**: `because[Reason]()` - describes why it failed
+
+```php
+// ✅ CORRECT: Reads as "Could not register because email address is already in use"
+final class CouldNotRegister extends \DomainException
+{
+    public static function becauseEmailAddressIsAlreadyInUse(Email $email): self
+    {
+        return new self(sprintf('Could not register: email "%s" is already in use.', $email->asString()));
+    }
+}
+
+// ✅ CORRECT: Multiple reasons for the same action
+final class CouldNotAuthenticate extends \DomainException
+{
+    public static function becauseInvalidCredentials(): self
+    {
+        return new self('Could not authenticate: invalid credentials.');
+    }
+
+    public static function becauseAccountHasBeenSuspended(UserId $userId): self
+    {
+        return new self(sprintf('Could not authenticate: account %s has been suspended.', $userId->asString()));
+    }
+}
+
+// ❌ WRONG: Describes state, not failed action
+final class UserAlreadyExistsException extends \DomainException
+{
+    public static function withEmail(Email $email): self { ... }
+}
+```
+
+**Benefits**:
+- Exception usage reads naturally: `throw CouldNotRegister::becauseEmailAddressIsAlreadyInUse($email)`
+- Groups related failures under one class (all registration failures in `CouldNotRegister`)
+- Factory methods are self-documenting
+
 ### ID Generation Strategy
 
 Aggregate IDs are generated in the driving adapter (processor) **before** dispatching the command:
