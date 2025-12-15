@@ -251,7 +251,7 @@ final class CreateMongoIndicesCommandTest extends KernelTestCase
     }
 
     /**
-     * @return array{key: array<string, int>, unique: bool}|null
+     * @return array{key: array<array-key, mixed>, unique: bool}|null
      */
     private function getIndexByName(string $collectionName, string $indexName): ?array
     {
@@ -259,11 +259,8 @@ final class CreateMongoIndicesCommandTest extends KernelTestCase
 
         foreach ($indices as $index) {
             if ($index->getName() === $indexName) {
-                /** @var array<string, int> $key */
-                $key = $index->getKey();
-
                 return [
-                    'key' => $key,
+                    'key' => $index->getKey(),
                     'unique' => $index->isUnique(),
                 ];
             }

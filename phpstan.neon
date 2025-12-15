@@ -1,5 +1,9 @@
 services:
     -
+        class: Tools\PHPStan\ForbidInlineVarTagRule
+        tags:
+            - phpstan.rules.rule
+    -
         class: Tools\PHPStan\ForbidRedundantDefaultValueArgumentRule
         tags:
             - phpstan.rules.rule
@@ -24,6 +28,10 @@ parameters:
     reportAnyTypeWideningInVarTag: true
     checkMissingOverrideMethodAttribute: true
     checkMissingCallableSignature: true
+    shipmonkDeadCode:
+        usageExcluders:
+            tests:
+                enabled: true
     paths:
         - src
         - tests
