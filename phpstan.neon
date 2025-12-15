@@ -4,6 +4,10 @@ services:
         tags:
             - phpstan.rules.rule
     -
+        class: Tools\PHPStan\ForbidPhpstanIgnoreRule
+        tags:
+            - phpstan.rules.rule
+    -
         class: Tools\PHPStan\ForbidRedundantDefaultValueArgumentRule
         tags:
             - phpstan.rules.rule
