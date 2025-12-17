@@ -71,6 +71,8 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event = new UserRegistered(
             id: $userId,
             email: $email,
+            dateOfBirth: '1990-05-15',
+            displayName: 'Test User',
             hashedPassword: 'hashed_password',
             occurredAt: $occurredAt,
         );
@@ -103,6 +105,8 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event1 = new UserRegistered(
             id: $userId1,
             email: $email1,
+            dateOfBirth: '1990-05-15',
+            displayName: 'First User',
             hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
@@ -112,6 +116,8 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event2 = new UserRegistered(
             id: $userId2,
             email: $email2,
+            dateOfBirth: '1990-05-15',
+            displayName: 'Second User',
             hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
@@ -133,6 +139,8 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event1 = new UserRegistered(
             id: $userId,
             email: $initialEmail,
+            dateOfBirth: '1990-05-15',
+            displayName: 'Test User',
             hashedPassword: 'hashed_password',
             occurredAt: $occurredAt,
         );
@@ -143,6 +151,8 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event2 = new UserRegistered(
             id: $userId,
             email: $initialEmail,
+            dateOfBirth: '1990-05-15',
+            displayName: 'Test User',
             hashedPassword: 'hashed_password',
             occurredAt: $occurredAt->modify('+1 second'),
         );
@@ -167,6 +177,8 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event = new UserRegistered(
             id: $userId,
             email: $email,
+            dateOfBirth: '1990-05-15',
+            displayName: 'Integrity User',
             hashedPassword: 'hashed_password',
             occurredAt: $registeredAt,
         );
@@ -194,6 +206,8 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event1 = new UserRegistered(
             id: $userId,
             email: $email,
+            dateOfBirth: '1990-05-15',
+            displayName: 'Concurrency User',
             hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
@@ -206,6 +220,8 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         $event2 = new UserRegistered(
             id: $userId,
             email: 'updated@example.com',
+            dateOfBirth: '1990-05-15',
+            displayName: 'Concurrency User',
             hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );

@@ -171,6 +171,8 @@ final class UserReadModelContractTest extends TestCase
             $readModel->handleEvent(new UserRegistered(
                 id: 'user-' . md5($email),
                 email: $email,
+                dateOfBirth: '1990-05-15',
+                displayName: 'Test User',
                 hashedPassword: 'hashed_password',
                 occurredAt: new \DateTimeImmutable(),
             ));
@@ -193,6 +195,8 @@ final class UserReadModelContractTest extends TestCase
             $projection->onUserRegistered(new UserRegistered(
                 id: 'user-' . md5($email),
                 email: $email,
+                dateOfBirth: '1990-05-15',
+                displayName: 'Test User',
                 hashedPassword: 'hashed_password',
                 occurredAt: new \DateTimeImmutable(),
             ));

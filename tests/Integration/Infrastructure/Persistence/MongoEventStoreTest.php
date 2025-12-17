@@ -52,6 +52,8 @@ final class MongoEventStoreTest extends TestCase
         $event = new UserRegistered(
             id: $aggregateId,
             email: 'document@example.com',
+            dateOfBirth: '1990-05-15',
+            displayName: 'Test User',
             hashedPassword: 'hashed_password',
             occurredAt: $specificTime,
         );

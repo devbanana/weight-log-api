@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\DependencyInjection;
 
 use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
@@ -25,9 +26,13 @@ final class ClockTimezoneValidatorPass implements CompilerPassInterface
 
         $aliasId = (string) $container->getAlias(ClockInterface::class);
         $definition = $container->findDefinition($aliasId);
+        $class = $definition->getClass();
         $arguments = $definition->getArguments();
 
-        $timezone = $arguments[0] ?? null;
+        // MockClock takes timezone as second argument, NativeClock as first
+        $timezone = $class === MockClock::class
+            ? ($arguments[1] ?? null)
+            : ($arguments[0] ?? null);
 
         if ($timezone !== 'UTC') {
             $timezoneDisplay = is_string($timezone)

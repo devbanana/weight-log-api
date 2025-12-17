@@ -14,6 +14,8 @@ final readonly class UserRegistered implements DomainEventInterface
     public function __construct(
         public string $id,
         public string $email,
+        public string $dateOfBirth,
+        public string $displayName,
         public string $hashedPassword,
         public \DateTimeImmutable $occurredAt,
     ) {

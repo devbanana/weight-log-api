@@ -11,5 +11,6 @@ services:
         public: true
         arguments:
             $kernel: '@kernel'
+            $clock: '@Symfony\Component\Clock\MockClock'
             $mongoClient: '@MongoDB\Client'
             $mongoDatabase: '%env(MONGODB_DATABASE)%'

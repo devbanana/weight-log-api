@@ -12,6 +12,7 @@ use App\Infrastructure\Api\EventListener\TokenResponseHeadersListener;
 use App\Infrastructure\Api\Resource\UserRegistrationResource;
 use App\Infrastructure\Api\State\RegisterUserProcessor;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -67,8 +68,10 @@ final class RegisterUserEndpointTest extends WebTestCase
                 // Verify command has valid UUID
                 self::assertTrue(Uuid::isValid($command->userId), 'userId should be a valid UUID');
 
-                // Verify command has correct email and password
+                // Verify command has correct fields
                 self::assertSame('test@example.com', $command->email);
+                self::assertSame('1990-05-15', $command->dateOfBirth);
+                self::assertSame('Test User', $command->displayName);
                 self::assertSame('SecurePass123!', $command->password);
 
                 return true;
@@ -78,6 +81,8 @@ final class RegisterUserEndpointTest extends WebTestCase
         // Act
         $this->postJson('/api/users', [
             'email' => 'test@example.com',
+            'dateOfBirth' => '1990-05-15',
+            'displayName' => 'Test User',
             'password' => 'SecurePass123!',
         ]);
 
@@ -103,6 +108,8 @@ final class RegisterUserEndpointTest extends WebTestCase
         // Act
         $this->postJson('/api/users', [
             'email' => 'user@example.com',
+            'dateOfBirth' => '1990-05-15',
+            'displayName' => 'Test User',
             'password' => 'SecurePass123!',
         ]);
 
@@ -130,6 +137,8 @@ final class RegisterUserEndpointTest extends WebTestCase
         // Act
         $this->postJson('/api/users', [
             'email' => 'TEST@EXAMPLE.COM',
+            'dateOfBirth' => '1990-05-15',
+            'displayName' => 'Test User',
             'password' => 'SecurePass123!',
         ]);
 
@@ -137,89 +146,115 @@ final class RegisterUserEndpointTest extends WebTestCase
         self::assertResponseStatusCodeSame(201);
     }
 
-    public function testItReturns422ForInvalidEmailFormat(): void
-    {
-        // Arrange
+    /**
+     * @param array<string, mixed> $payload
+     */
+    #[DataProvider('provideItReturns422ForValidationErrorsCases')]
+    public function testItReturns422ForValidationErrors(
+        array $payload,
+        string $expectedPath,
+        ?string $expectedMessage = null,
+    ): void {
         $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act
-        $this->postJson('/api/users', [
-            'email' => 'not-an-email',
+        $this->postJson('/api/users', $payload);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
+
+        $data = $this->getJsonResponse();
+        self::assertArrayHasKey('violations', $data);
+        $violations = $data['violations'];
+        self::assertIsArray($violations);
+        self::assertCount(1, $violations);
+        self::assertIsArray($violations[0]);
+        self::assertSame($expectedPath, $violations[0]['propertyPath']);
+
+        if ($expectedMessage !== null) {
+            self::assertSame($expectedMessage, $violations[0]['message']);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string, 2?: string}>
+     */
+    public static function provideItReturns422ForValidationErrorsCases(): iterable
+    {
+        $valid = [
+            'email' => 'test@example.com',
+            'dateOfBirth' => '1990-05-15',
+            'displayName' => 'Test User',
             'password' => 'SecurePass123!',
-        ]);
+        ];
 
-        // Assert
-        self::assertResponseStatusCodeSame(422);
-        self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
+        yield 'invalid email format' => [[...$valid, 'email' => 'not-an-email'], 'email'];
 
-        $data = $this->getJsonResponse();
-        self::assertArrayHasKey('violations', $data);
-        $violations = $data['violations'];
-        assert(is_array($violations));
-        self::assertCount(1, $violations);
-        assert(is_array($violations[0]));
-        self::assertSame('email', $violations[0]['propertyPath']);
+        yield 'empty email' => [[...$valid, 'email' => ''], 'email'];
+
+        yield 'password too short' => [
+            [...$valid, 'password' => 'short'],
+            'password',
+            'Password must be at least 8 characters long',
+        ];
+
+        yield 'empty display name' => [[...$valid, 'displayName' => ''], 'displayName'];
+
+        yield 'whitespace-only display name' => [[...$valid, 'displayName' => '   '], 'displayName'];
+
+        yield 'display name too long' => [
+            [...$valid, 'displayName' => str_repeat('a', 51)],
+            'displayName',
+            'Display name cannot exceed 50 characters',
+        ];
+
+        yield 'empty date of birth' => [[...$valid, 'dateOfBirth' => ''], 'dateOfBirth'];
+
+        yield 'invalid date of birth format' => [[...$valid, 'dateOfBirth' => 'invalid'], 'dateOfBirth'];
+
+        yield 'date of birth with time component' => [[...$valid, 'dateOfBirth' => '1990-05-15T12:00:00'], 'dateOfBirth'];
     }
 
-    public function testItReturns422ForEmptyEmail(): void
+    /**
+     * Tests for 400 errors from API Platform deserialization failures.
+     *
+     * @param array<string, mixed> $payload
+     */
+    #[DataProvider('provideItReturns400ForDeserializationErrorsCases')]
+    public function testItReturns400ForDeserializationErrors(array $payload): void
     {
-        // Arrange
         $this->commandBus->expects(self::never())->method('dispatch');
 
-        // Act
-        $this->postJson('/api/users', ['email' => '', 'password' => 'SecurePass123!']);
+        $this->postJson('/api/users', $payload);
 
-        // Assert
-        self::assertResponseStatusCodeSame(422);
-        self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
-    }
-
-    public function testItReturns400ForMissingEmail(): void
-    {
-        // Arrange
-        $this->commandBus->expects(self::never())->method('dispatch');
-
-        // Act
-        $this->postJson('/api/users', ['password' => 'SecurePass123!']);
-
-        // Assert (API Platform deserialization error)
         self::assertResponseStatusCodeSame(400);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
     }
 
-    public function testItReturns400ForMissingPassword(): void
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function provideItReturns400ForDeserializationErrorsCases(): iterable
     {
-        // Arrange
-        $this->commandBus->expects(self::never())->method('dispatch');
+        $valid = [
+            'email' => 'test@example.com',
+            'dateOfBirth' => '1990-05-15',
+            'displayName' => 'Test User',
+            'password' => 'SecurePass123!',
+        ];
 
-        // Act
-        $this->postJson('/api/users', ['email' => 'test@example.com']);
+        // Missing required fields
+        yield 'missing email' => [array_diff_key($valid, ['email' => true])];
 
-        // Assert (API Platform deserialization error)
-        self::assertResponseStatusCodeSame(400);
-        self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
-    }
+        yield 'missing password' => [array_diff_key($valid, ['password' => true])];
 
-    public function testItReturns422ForPasswordTooShort(): void
-    {
-        // Arrange
-        $this->commandBus->expects(self::never())->method('dispatch');
+        yield 'missing displayName' => [array_diff_key($valid, ['displayName' => true])];
 
-        // Act
-        $this->postJson('/api/users', ['email' => 'test@example.com', 'password' => 'short']);
+        yield 'missing dateOfBirth' => [array_diff_key($valid, ['dateOfBirth' => true])];
 
-        // Assert
-        self::assertResponseStatusCodeSame(422);
-        self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
+        // Wrong types
+        yield 'non-string email' => [[...$valid, 'email' => 12_345]];
 
-        $data = $this->getJsonResponse();
-        self::assertArrayHasKey('violations', $data);
-        $violations = $data['violations'];
-        assert(is_array($violations));
-        self::assertCount(1, $violations);
-        assert(is_array($violations[0]));
-        self::assertSame('password', $violations[0]['propertyPath']);
-        self::assertSame('Password must be at least 8 characters long', $violations[0]['message']);
+        yield 'null email' => [[...$valid, 'email' => null]];
     }
 
     public function testItReturns409WhenUserAlreadyExists(): void
@@ -236,6 +271,8 @@ final class RegisterUserEndpointTest extends WebTestCase
         // Act
         $this->postJson('/api/users', [
             'email' => 'duplicate@example.com',
+            'dateOfBirth' => '1990-05-15',
+            'displayName' => 'Test User',
             'password' => 'SecurePass123!',
         ]);
 
@@ -247,32 +284,58 @@ final class RegisterUserEndpointTest extends WebTestCase
         self::assertArrayHasKey('title', $data);
         self::assertArrayHasKey('detail', $data);
         $detail = $data['detail'];
-        assert(is_string($detail));
+        self::assertIsString($detail);
         self::assertStringContainsString('duplicate@example.com', $detail);
     }
 
-    public function testItReturns400ForNonStringEmail(): void
+    public function testItReturns422WhenUserIsTooYoung(): void
     {
-        // Arrange
-        $this->commandBus->expects(self::never())->method('dispatch');
+        $this->commandBus
+            ->expects(self::once())
+            ->method('dispatch')
+            ->willThrowException(CouldNotRegister::becauseUserIsTooYoung(16, 18))
+        ;
 
-        // Act (type mismatch during deserialization)
-        $this->postJson('/api/users', ['email' => 12_345]);
+        $this->postJson('/api/users', [
+            'email' => 'young@example.com',
+            'dateOfBirth' => '2010-06-15',
+            'displayName' => 'Young User',
+            'password' => 'SecurePass123!',
+        ]);
 
-        // Assert
-        self::assertResponseStatusCodeSame(400);
+        self::assertResponseStatusCodeSame(422);
+        self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
+
+        $data = $this->getJsonResponse();
+        self::assertArrayHasKey('detail', $data);
+        $detail = $data['detail'];
+        self::assertIsString($detail);
+        self::assertStringContainsString('at least 18 years old', $detail);
     }
 
-    public function testItReturns400ForNullEmail(): void
+    public function testItReturns422WhenDateOfBirthIsInTheFuture(): void
     {
-        // Arrange
-        $this->commandBus->expects(self::never())->method('dispatch');
+        $this->commandBus
+            ->expects(self::once())
+            ->method('dispatch')
+            ->willThrowException(CouldNotRegister::becauseDateOfBirthIsInTheFuture())
+        ;
 
-        // Act (type mismatch during deserialization)
-        $this->postJson('/api/users', ['email' => null]);
+        $this->postJson('/api/users', [
+            'email' => 'future@example.com',
+            'dateOfBirth' => '2030-01-01',
+            'displayName' => 'Future User',
+            'password' => 'SecurePass123!',
+        ]);
 
-        // Assert
-        self::assertResponseStatusCodeSame(400);
+        self::assertResponseStatusCodeSame(422);
+        self::assertResponseHeaderSame('Content-Type', 'application/problem+json; charset=utf-8');
+
+        $data = $this->getJsonResponse();
+        self::assertArrayHasKey('detail', $data);
+        $detail = $data['detail'];
+        self::assertIsString($detail);
+        self::assertStringContainsString('cannot be in the future', $detail);
     }
 
     public function testItReturns400ForMalformedJson(): void

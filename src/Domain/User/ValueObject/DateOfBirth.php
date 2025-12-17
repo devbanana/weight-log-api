@@ -21,8 +21,26 @@ final readonly class DateOfBirth
         return new self(mb_trim($value));
     }
 
-    public static function fromDateTime(\DateTimeImmutable $dateTime): self
+    public function asString(): string
     {
-        return new self($dateTime->format('Y-m-d'));
+        return $this->value;
+    }
+
+    public function asDateTime(): \DateTimeImmutable
+    {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $this->value, new \DateTimeZone('UTC'));
+        assert($date instanceof \DateTimeImmutable);
+
+        return $date;
+    }
+
+    public function calculateAgeAt(\DateTimeImmutable $referenceDate): int
+    {
+        return $this->asDateTime()->diff($referenceDate)->y;
+    }
+
+    public function isAfter(\DateTimeImmutable $referenceDate): bool
+    {
+        return $this->asDateTime() > $referenceDate;
     }
 }

@@ -75,4 +75,18 @@ final class DisplayNameTest extends TestCase
 
         yield '50 characters in another alphabet' => [str_repeat('あ', 50)];
     }
+
+    public function testItReturnsStringRepresentation(): void
+    {
+        $displayName = DisplayName::fromString('John Doe');
+
+        self::assertSame('John Doe', $displayName->asString());
+    }
+
+    public function testItTrimsWhitespaceFromInput(): void
+    {
+        $displayName = DisplayName::fromString('  John Doe  ');
+
+        self::assertSame('John Doe', $displayName->asString());
+    }
 }

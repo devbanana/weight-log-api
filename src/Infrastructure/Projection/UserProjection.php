@@ -27,6 +27,8 @@ final readonly class UserProjection
             ['_id' => $event->id],
             ['$set' => [
                 'email' => $event->email,
+                'date_of_birth' => $event->dateOfBirth,
+                'display_name' => $event->displayName,
                 'hashed_password' => $event->hashedPassword,
                 'registered_at' => new UTCDateTime($event->occurredAt),
             ]],

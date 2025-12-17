@@ -38,6 +38,12 @@ final readonly class UserRegistrationResource
         #[Assert\Email]
         public string $email,
         #[Assert\NotBlank]
+        #[Assert\Date]
+        public string $dateOfBirth,
+        #[Assert\NotBlank(normalizer: 'trim')]
+        #[Assert\Length(max: 50, maxMessage: 'Display name cannot exceed {{ limit }} characters')]
+        public string $displayName,
+        #[Assert\NotBlank]
         #[Assert\Length(min: 8, minMessage: 'Password must be at least {{ limit }} characters long')]
         public string $password,
     ) {

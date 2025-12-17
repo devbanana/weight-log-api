@@ -113,6 +113,16 @@ services:
 
 when@test:
     services:
+        # Use MockClock for deterministic date/time in tests
+        Symfony\Component\Clock\MockClock:
+            public: true
+            arguments:
+                - '2025-12-12 12:00:00'
+                - 'UTC'
+
+        Psr\Clock\ClockInterface:
+            alias: Symfony\Component\Clock\MockClock
+
         # Make services public for testing
         MongoDB\Client:
             public: true

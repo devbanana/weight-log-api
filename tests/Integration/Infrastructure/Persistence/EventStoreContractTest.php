@@ -193,6 +193,8 @@ final class EventStoreContractTest extends TestCase
         $event = new UserRegistered(
             id: $aggregateId,
             email: 'datetime@example.com',
+            dateOfBirth: '1990-05-15',
+            displayName: 'Test User',
             hashedPassword: 'hashed_password',
             occurredAt: $specificTime,
         );
@@ -288,6 +290,8 @@ final class EventStoreContractTest extends TestCase
         return new UserRegistered(
             id: $aggregateId,
             email: $email,
+            dateOfBirth: '1990-05-15',
+            displayName: 'Test User',
             hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable('2025-01-01 12:00:00'),
         );
