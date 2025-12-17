@@ -9,6 +9,8 @@ use App\Domain\Common\EventStore\EventStoreInterface;
 use App\Domain\User\Exception\CouldNotRegister;
 use App\Domain\User\User;
 use App\Domain\User\UserReadModelInterface;
+use App\Domain\User\ValueObject\DateOfBirth;
+use App\Domain\User\ValueObject\DisplayName;
 use App\Domain\User\ValueObject\Email;
 use App\Domain\User\ValueObject\PlainPassword;
 use App\Domain\User\ValueObject\UserId;
@@ -38,12 +40,16 @@ final readonly class RegisterUserHandler
         }
 
         $userId = UserId::fromString($command->userId);
+        $dateOfBirth = DateOfBirth::fromString($command->dateOfBirth);
+        $displayName = DisplayName::fromString($command->displayName);
         $plainPassword = PlainPassword::fromString($command->password);
         $hashedPassword = $this->passwordHasher->hash($plainPassword);
 
         $user = User::register(
             $userId,
             $email,
+            $dateOfBirth,
+            $displayName,
             $hashedPassword,
             $this->clock->now(),
         );

@@ -17,6 +17,8 @@ final readonly class RegisterUserCommand implements CommandInterface
     public function __construct(
         public string $userId,
         public string $email,
+        public string $dateOfBirth,
+        public string $displayName,
         public string $password,
     ) {
     }

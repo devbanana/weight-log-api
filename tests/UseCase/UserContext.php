@@ -10,8 +10,10 @@ use App\Application\User\Query\FindUserAuthDataByEmailQuery;
 use App\Domain\User\Event\UserLoggedIn;
 use App\Domain\User\Exception\CouldNotAuthenticate;
 use App\Domain\User\Exception\CouldNotRegister;
+use App\Domain\User\Exception\RegistrationFailureReason;
 use App\Domain\User\User;
 use Behat\Behat\Context\Context;
+use Behat\Gherkin\Node\TableNode;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
@@ -36,23 +38,31 @@ final class UserContext implements Context
         $this->container = new TestContainer();
     }
 
-    #[When('I register with email :email and password :password')]
-    public function iRegisterWithEmailAndPassword(string $email, string $password): void
+    #[Given('today\'s date is :date')]
+    public function todaysDateIs(string $date): void
     {
-        // Generate client-side UUID (v7 is time-ordered, better for databases)
-        $this->registeredUserId = Uuid::v7()->toString();
+        $dateTime = \DateTimeImmutable::createFromFormat('F j, Y H:i:s', $date . ' 12:00:00', new \DateTimeZone('UTC'));
+        assert($dateTime instanceof \DateTimeImmutable);
+        $this->container->clock->modify($dateTime->format('Y-m-d H:i:s'));
+    }
 
-        $command = new RegisterUserCommand(
-            userId: $this->registeredUserId,
-            email: $email,
-            password: $password,
-        );
+    #[When('I register with:')]
+    public function iRegisterWith(TableNode $table): void
+    {
+        $data = $table->getRowsHash();
+        $email = $data['email'];
+        $dateOfBirth = $data['dateOfBirth'];
+        $displayName = $data['displayName'];
+        $password = $data['password'];
+        assert(is_string($email) && is_string($dateOfBirth) && is_string($displayName) && is_string($password));
 
-        try {
-            $this->container->commandBus->dispatch($command);
-        } catch (\Throwable $e) {
-            $this->caughtException = $e;
-        }
+        $this->registerWithData($email, $dateOfBirth, $displayName, $password);
+    }
+
+    #[When('I register with a whitespace-only display name')]
+    public function iRegisterWithAWhitespaceOnlyDisplayName(): void
+    {
+        $this->registerWithData('bob@example.com', '1990-05-15', '   ', 'SecurePass123!');
     }
 
     #[Then('I should be registered')]
@@ -69,12 +79,20 @@ final class UserContext implements Context
         User::reconstitute($events);
     }
 
+    #[Given('a user exists with email :email')]
+    public function aUserExistsWithEmail(string $email): void
+    {
+        $this->aUserExistsWithEmailAndPassword($email, 'DefaultPass123!');
+    }
+
     #[Given('a user exists with email :email and password :password')]
     public function aUserExistsWithEmailAndPassword(string $email, string $password): void
     {
         $command = new RegisterUserCommand(
             userId: Uuid::v7()->toString(),
             email: $email,
+            dateOfBirth: '1990-01-01',
+            displayName: 'Existing User',
             password: $password,
         );
 
@@ -93,12 +111,44 @@ final class UserContext implements Context
 
     #[Then('registration should fail due to invalid email format')]
     #[Then('registration should fail due to invalid password')]
+    #[Then('registration should fail due to invalid date of birth')]
+    #[Then('registration should fail due to invalid display name')]
     public function registrationShouldFailDueToValidationError(): void
     {
         Assert::isInstanceOf(
             $this->caughtException,
             \InvalidArgumentException::class,
             'Expected InvalidArgumentException to be thrown',
+        );
+    }
+
+    #[Then('registration should fail because user is under 18')]
+    public function registrationShouldFailBecauseUserIsUnder18(): void
+    {
+        Assert::isInstanceOf(
+            $this->caughtException,
+            CouldNotRegister::class,
+            'Expected CouldNotRegister exception to be thrown',
+        );
+        Assert::contains(
+            $this->caughtException->getMessage(),
+            'at least',
+            'Expected exception message to mention age requirement',
+        );
+    }
+
+    #[Then('registration should fail because date of birth is in the future')]
+    public function registrationShouldFailBecauseDateOfBirthIsInTheFuture(): void
+    {
+        Assert::isInstanceOf(
+            $this->caughtException,
+            CouldNotRegister::class,
+            'Expected CouldNotRegister exception to be thrown',
+        );
+        Assert::same(
+            RegistrationFailureReason::DateOfBirthInTheFuture,
+            $this->caughtException->reason,
+            'Expected registration to fail because date of birth is in the future',
         );
     }
 
@@ -157,5 +207,25 @@ final class UserContext implements Context
             \InvalidArgumentException::class,
             'Expected InvalidArgumentException to be thrown',
         );
+    }
+
+    private function registerWithData(string $email, string $dateOfBirth, string $displayName, string $password): void
+    {
+        // Generate client-side UUID (v7 is time-ordered, better for databases)
+        $this->registeredUserId = Uuid::v7()->toString();
+
+        $command = new RegisterUserCommand(
+            userId: $this->registeredUserId,
+            email: $email,
+            dateOfBirth: $dateOfBirth,
+            displayName: $displayName,
+            password: $password,
+        );
+
+        try {
+            $this->container->commandBus->dispatch($command);
+        } catch (\Throwable $e) {
+            $this->caughtException = $e;
+        }
     }
 }

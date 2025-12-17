@@ -72,21 +72,85 @@ final class DateOfBirthTest extends TestCase
         yield 'date with spaces' => [' 1990-05-15 '];
     }
 
-    public function testItCanBeCreatedFromDateTimeImmutable(): void
+    public function testItReturnsStringRepresentation(): void
     {
-        $dateTime = new \DateTimeImmutable('1990-05-15');
+        $dateOfBirth = DateOfBirth::fromString('1990-05-15');
 
-        $dateOfBirth = DateOfBirth::fromDateTime($dateTime);
-
-        self::assertInstanceOf(DateOfBirth::class, $dateOfBirth);
+        self::assertSame('1990-05-15', $dateOfBirth->asString());
     }
 
-    public function testItExtractsDateOnlyFromDateTimeWithTime(): void
+    public function testItConvertsToDateTimeImmutable(): void
     {
-        $dateTimeWithTime = new \DateTimeImmutable('1990-05-15 14:30:00');
+        $dateOfBirth = DateOfBirth::fromString('1990-05-15');
 
-        $dateOfBirth = DateOfBirth::fromDateTime($dateTimeWithTime);
+        $dateTime = $dateOfBirth->asDateTime();
 
-        self::assertInstanceOf(DateOfBirth::class, $dateOfBirth);
+        self::assertSame('1990-05-15', $dateTime->format('Y-m-d'));
+    }
+
+    public function testItReturnsDateTimeAtMidnightWithZeroMicroseconds(): void
+    {
+        $dateOfBirth = DateOfBirth::fromString('1990-05-15');
+
+        $dateTime = $dateOfBirth->asDateTime();
+
+        self::assertSame('00:00:00.000000', $dateTime->format('H:i:s.u'));
+    }
+
+    #[DataProvider('provideItCalculatesAgeCorrectlyCases')]
+    public function testItCalculatesAgeCorrectly(
+        string $dateOfBirth,
+        string $referenceDate,
+        int $expectedAge,
+    ): void {
+        $dob = DateOfBirth::fromString($dateOfBirth);
+        $reference = new \DateTimeImmutable($referenceDate);
+
+        self::assertSame($expectedAge, $dob->calculateAgeAt($reference));
+    }
+
+    /**
+     * @return iterable<string, array{string, string, int}>
+     */
+    public static function provideItCalculatesAgeCorrectlyCases(): iterable
+    {
+        // Reference date: 2025-12-12 (matches MockClock in tests)
+        yield 'simple age calculation' => ['1990-05-15', '2025-12-12', 35];
+
+        yield 'birthday today' => ['2007-12-12', '2025-12-12', 18];
+
+        yield 'birthday tomorrow (not yet 18)' => ['2007-12-13', '2025-12-12', 17];
+
+        yield 'birthday yesterday' => ['2007-12-11', '2025-12-12', 18];
+
+        yield 'born on leap day, reference is non-leap year' => ['2000-02-29', '2025-12-12', 25];
+
+        yield 'very young' => ['2020-06-15', '2025-12-12', 5];
+
+        yield 'very old' => ['1920-01-01', '2025-12-12', 105];
+    }
+
+    public function testIsAfterReturnsTrueWhenDateOfBirthIsAfterReference(): void
+    {
+        $dateOfBirth = DateOfBirth::fromString('2030-01-01');
+        $reference = new \DateTimeImmutable('2025-12-12');
+
+        self::assertTrue($dateOfBirth->isAfter($reference));
+    }
+
+    public function testIsAfterReturnsFalseWhenDateOfBirthIsBeforeReference(): void
+    {
+        $dateOfBirth = DateOfBirth::fromString('1990-05-15');
+        $reference = new \DateTimeImmutable('2025-12-12');
+
+        self::assertFalse($dateOfBirth->isAfter($reference));
+    }
+
+    public function testIsAfterReturnsFalseWhenDateOfBirthIsSameAsReference(): void
+    {
+        $dateOfBirth = DateOfBirth::fromString('2025-12-12');
+        $reference = new \DateTimeImmutable('2025-12-12');
+
+        self::assertFalse($dateOfBirth->isAfter($reference));
     }
 }

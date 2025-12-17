@@ -10,6 +10,9 @@ use App\Domain\Common\Event\DomainEventInterface;
 use App\Domain\User\Event\UserLoggedIn;
 use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\Exception\CouldNotAuthenticate;
+use App\Domain\User\Exception\CouldNotRegister;
+use App\Domain\User\ValueObject\DateOfBirth;
+use App\Domain\User\ValueObject\DisplayName;
 use App\Domain\User\ValueObject\Email;
 use App\Domain\User\ValueObject\HashedPassword;
 use App\Domain\User\ValueObject\PlainPassword;
@@ -25,8 +28,12 @@ final class User implements EventSourcedAggregateInterface
 {
     use RecordsEvents;
 
+    private const int MINIMUM_AGE = 18;
+
     private UserId $id;
     private Email $email;
+    private DateOfBirth $dateOfBirth;
+    private DisplayName $displayName;
     private HashedPassword $password;
 
     private function __construct()
@@ -40,13 +47,26 @@ final class User implements EventSourcedAggregateInterface
     public static function register(
         UserId $id,
         Email $email,
+        DateOfBirth $dateOfBirth,
+        DisplayName $displayName,
         HashedPassword $password,
         \DateTimeImmutable $registeredAt,
     ): self {
+        if ($dateOfBirth->isAfter($registeredAt)) {
+            throw CouldNotRegister::becauseDateOfBirthIsInTheFuture();
+        }
+
+        $age = $dateOfBirth->calculateAgeAt($registeredAt);
+        if ($age < self::MINIMUM_AGE) {
+            throw CouldNotRegister::becauseUserIsTooYoung($age, self::MINIMUM_AGE);
+        }
+
         $user = new self();
         $user->recordThat(new UserRegistered(
             $id->asString(),
             $email->asString(),
+            $dateOfBirth->asString(),
+            $displayName->asString(),
             $password->asString(),
             $registeredAt,
         ));
@@ -99,6 +119,8 @@ final class User implements EventSourcedAggregateInterface
     {
         $this->id = UserId::fromString($event->id);
         $this->email = Email::fromString($event->email);
+        $this->dateOfBirth = DateOfBirth::fromString($event->dateOfBirth);
+        $this->displayName = DisplayName::fromString($event->displayName);
         $this->password = HashedPassword::fromHash($event->hashedPassword);
     }
 

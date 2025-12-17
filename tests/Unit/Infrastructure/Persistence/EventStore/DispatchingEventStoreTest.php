@@ -24,7 +24,7 @@ final class DispatchingEventStoreTest extends TestCase
     {
         $aggregateId = 'user-123';
         $aggregateType = 'App\Domain\User\User';
-        $event = new UserRegistered('user-123', 'test@example.com', 'hashed_password', new \DateTimeImmutable());
+        $event = new UserRegistered('user-123', 'test@example.com', '1990-05-15', 'Test User', 'hashed_password', new \DateTimeImmutable());
         $events = [$event];
         $expectedVersion = 0;
 
@@ -49,8 +49,8 @@ final class DispatchingEventStoreTest extends TestCase
         $aggregateId = 'user-123';
         $aggregateType = 'App\Domain\User\User';
         // Using same aggregate ID for both events (realistic for multi-event append)
-        $event1 = new UserRegistered('user-123', 'test@example.com', 'hashed_password', new \DateTimeImmutable());
-        $event2 = new UserRegistered('user-123', 'test@example.com', 'hashed_password', new \DateTimeImmutable());
+        $event1 = new UserRegistered('user-123', 'test@example.com', '1990-05-15', 'Test User', 'hashed_password', new \DateTimeImmutable());
+        $event2 = new UserRegistered('user-123', 'test@example.com', '1990-05-15', 'Test User', 'hashed_password', new \DateTimeImmutable());
         $events = [$event1, $event2];
         $expectedVersion = 0;
 
@@ -79,7 +79,7 @@ final class DispatchingEventStoreTest extends TestCase
     {
         $aggregateId = 'user-123';
         $aggregateType = 'App\Domain\User\User';
-        $event = new UserRegistered('user-123', 'test@example.com', 'hashed_password', new \DateTimeImmutable());
+        $event = new UserRegistered('user-123', 'test@example.com', '1990-05-15', 'Test User', 'hashed_password', new \DateTimeImmutable());
         $events = [$event];
         $expectedVersion = 1;
 
@@ -113,7 +113,7 @@ final class DispatchingEventStoreTest extends TestCase
     {
         $aggregateId = 'user-123';
         $aggregateType = 'App\Domain\User\User';
-        $event = new UserRegistered('user-123', 'test@example.com', 'hashed_password', new \DateTimeImmutable());
+        $event = new UserRegistered('user-123', 'test@example.com', '1990-05-15', 'Test User', 'hashed_password', new \DateTimeImmutable());
         $events = [$event];
         $expectedVersion = 0;
 
@@ -143,8 +143,8 @@ final class DispatchingEventStoreTest extends TestCase
     {
         $aggregateId = 'user-123';
         $aggregateType = 'App\Domain\User\User';
-        $event1 = new UserRegistered('user-123', 'test@example.com', 'hashed_password', new \DateTimeImmutable());
-        $event2 = new UserRegistered('user-123', 'updated@example.com', 'hashed_password', new \DateTimeImmutable());
+        $event1 = new UserRegistered('user-123', 'test@example.com', '1990-05-15', 'Test User', 'hashed_password', new \DateTimeImmutable());
+        $event2 = new UserRegistered('user-123', 'updated@example.com', '1990-05-15', 'Test User', 'hashed_password', new \DateTimeImmutable());
         $expectedEvents = [$event1, $event2];
 
         $inner = $this->createMock(EventStoreInterface::class);

@@ -21,10 +21,11 @@ final class TestContainer
     public readonly InMemoryEventStore $eventStore;
     public readonly InMemoryCommandBus $commandBus;
     public readonly InMemoryQueryBus $queryBus;
+    public readonly MockClock $clock;
 
     public function __construct()
     {
-        $clock = new MockClock('2025-12-12 12:00:00 UTC');
+        $this->clock = new MockClock('2025-12-12 12:00:00 UTC');
         $passwordHasher = new FakePasswordHasher();
         $userReadModel = new InMemoryUserReadModel();
 
@@ -37,7 +38,7 @@ final class TestContainer
             new RegisterUserHandler(
                 $this->eventStore,
                 $userReadModel,
-                $clock,
+                $this->clock,
                 $passwordHasher,
             ),
         );
@@ -45,7 +46,7 @@ final class TestContainer
             LoginCommand::class,
             new LoginHandler(
                 $this->eventStore,
-                $clock,
+                $this->clock,
             ),
         );
 

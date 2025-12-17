@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\E2E;
 
 use Behat\Behat\Context\Context;
+use Behat\Gherkin\Node\TableNode;
 use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
 use MongoDB\Client;
 use MongoDB\Database;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\KernelInterface;
 
@@ -29,6 +31,7 @@ final class UserContext implements Context
 
     public function __construct(
         private readonly KernelInterface $kernel,
+        private MockClock $clock,
         Client $mongoClient,
         string $mongoDatabase,
     ) {
@@ -42,10 +45,29 @@ final class UserContext implements Context
         $this->database->dropCollection('users');
     }
 
+    #[Given('today\'s date is :date')]
+    public function todaysDateIs(string $date): void
+    {
+        $dateTime = \DateTimeImmutable::createFromFormat('F j, Y H:i:s', $date . ' 12:00:00', new \DateTimeZone('UTC'));
+        assert($dateTime instanceof \DateTimeImmutable);
+        $this->clock->modify($dateTime->format('Y-m-d H:i:s'));
+    }
+
+    #[Given('a user exists with email :email')]
+    public function aUserExistsWithEmail(string $email): void
+    {
+        $this->aUserExistsWithEmailAndPassword($email, 'DefaultPass123!');
+    }
+
     #[Given('a user exists with email :email and password :password')]
     public function aUserExistsWithEmailAndPassword(string $email, string $password): void
     {
-        $this->iRegisterWithEmailAndPassword($email, $password);
+        $this->response = $this->makeJsonRequest('POST', '/api/users', [
+            'email' => $email,
+            'dateOfBirth' => '1990-01-01',
+            'displayName' => 'Existing User',
+            'password' => $password,
+        ]);
         self::assertResponseStatusCode($this->response, 201, 'Created (test setup)');
 
         // Shutdown kernel to ensure services are fresh for next request
@@ -55,13 +77,23 @@ final class UserContext implements Context
         $this->response = null;
     }
 
-    #[When('I register with email :email and password :password')]
-    public function iRegisterWithEmailAndPassword(string $email, string $password): void
+    #[When('I register with:')]
+    public function iRegisterWith(TableNode $table): void
     {
-        $this->response = $this->makeJsonRequest('POST', '/api/users', [
-            'email' => $email,
-            'password' => $password,
-        ]);
+        $data = $table->getRowsHash();
+        $email = $data['email'];
+        $dateOfBirth = $data['dateOfBirth'];
+        $displayName = $data['displayName'];
+        $password = $data['password'];
+        assert(is_string($email) && is_string($dateOfBirth) && is_string($displayName) && is_string($password));
+
+        $this->registerWithData($email, $dateOfBirth, $displayName, $password);
+    }
+
+    #[When('I register with a whitespace-only display name')]
+    public function iRegisterWithAWhitespaceOnlyDisplayName(): void
+    {
+        $this->registerWithData('bob@example.com', '1990-05-15', '   ', 'SecurePass123!');
     }
 
     #[Then('I should be registered')]
@@ -83,7 +115,21 @@ final class UserContext implements Context
     }
 
     #[Then('registration should fail due to invalid password')]
+    #[Then('registration should fail due to invalid date of birth')]
+    #[Then('registration should fail due to invalid display name')]
     public function registrationShouldFailDueToInvalidPassword(): void
+    {
+        self::assertResponseStatusCode($this->response, 422, 'Unprocessable Entity');
+    }
+
+    #[Then('registration should fail because user is under 18')]
+    public function registrationShouldFailBecauseUserIsUnder18(): void
+    {
+        self::assertResponseStatusCode($this->response, 422, 'Unprocessable Entity');
+    }
+
+    #[Then('registration should fail because date of birth is in the future')]
+    public function registrationShouldFailBecauseDateOfBirthIsInTheFuture(): void
     {
         self::assertResponseStatusCode($this->response, 422, 'Unprocessable Entity');
     }
@@ -116,5 +162,15 @@ final class UserContext implements Context
     public function loginShouldFailDueToValidationError(): void
     {
         self::assertResponseStatusCode($this->response, 422, 'Unprocessable Entity');
+    }
+
+    private function registerWithData(string $email, string $dateOfBirth, string $displayName, string $password): void
+    {
+        $this->response = $this->makeJsonRequest('POST', '/api/users', [
+            'email' => $email,
+            'dateOfBirth' => $dateOfBirth,
+            'displayName' => $displayName,
+            'password' => $password,
+        ]);
     }
 }

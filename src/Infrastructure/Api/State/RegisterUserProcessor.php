@@ -9,8 +9,10 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Application\MessageBus\CommandBusInterface;
 use App\Application\User\Command\RegisterUserCommand;
 use App\Domain\User\Exception\CouldNotRegister;
+use App\Domain\User\Exception\RegistrationFailureReason;
 use App\Infrastructure\Api\Resource\UserRegistrationResource;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -37,13 +39,19 @@ final readonly class RegisterUserProcessor implements ProcessorInterface
         $command = new RegisterUserCommand(
             userId: Uuid::v7()->toRfc4122(),
             email: $data->email,
+            dateOfBirth: $data->dateOfBirth,
+            displayName: $data->displayName,
             password: $data->password,
         );
 
         try {
             $this->commandBus->dispatch($command);
         } catch (CouldNotRegister $e) {
-            throw new ConflictHttpException($e->getMessage(), $e);
+            throw match ($e->reason) {
+                RegistrationFailureReason::EmailAlreadyInUse => new ConflictHttpException($e->getMessage(), $e),
+                RegistrationFailureReason::UserTooYoung,
+                RegistrationFailureReason::DateOfBirthInTheFuture => new UnprocessableEntityHttpException($e->getMessage(), $e),
+            };
         }
     }
 }

@@ -19,4 +19,9 @@ final readonly class DisplayName
     {
         return new self(mb_trim($value));
     }
+
+    public function asString(): string
+    {
+        return $this->value;
+    }
 }
