@@ -376,14 +376,17 @@ try {
 
 ### DDD-Style Exception Naming
 
-Domain exceptions follow a descriptive naming pattern that reads as a sentence:
+Domain exceptions follow descriptive naming patterns that read as sentences. The pattern differs between commands and queries:
 
-**Class naming**: `CouldNot[Action]` - describes what action failed
+#### Command Exceptions (business rule violations)
 
-**Factory method naming**: `because[Reason]()` - describes why it failed
+**Pattern**: `CouldNot[Action]::because[Reason]()`
+
+- Class name describes what action failed
+- Factory method describes **why** it failed
 
 ```php
-// ✅ CORRECT: Reads as "Could not register because email address is already in use"
+// ✅ CORRECT: Reads as "Could not register because email is already in use"
 final class CouldNotRegister extends \DomainException
 {
     public static function becauseEmailIsAlreadyInUse(Email $email): self
@@ -413,9 +416,40 @@ final class UserAlreadyExistsException extends \DomainException
 }
 ```
 
+#### Query Exceptions (entity not found)
+
+**Pattern**: `CouldNotFind[Entity]::with[Identifier]()`
+
+- Class name describes what couldn't be found
+- Factory method describes **how** you tried to find it (the lookup key)
+
+```php
+// ✅ CORRECT: Reads as "Could not find user with ID xyz"
+final class CouldNotFindUser extends \DomainException
+{
+    public static function withId(UserId $id): self
+    {
+        return new self(sprintf('Could not find user with ID "%s".', $id->asString()));
+    }
+
+    // Multiple lookup methods are fine
+    public static function withEmail(Email $email): self
+    {
+        return new self(sprintf('Could not find user with email "%s".', $email->asString()));
+    }
+}
+```
+
+#### Summary
+
+| Type | Pattern | Method prefix | Explains |
+|------|---------|---------------|----------|
+| Command | `CouldNot[Action]` | `because` | Why the action failed |
+| Query | `CouldNotFind[Entity]` | `with` | How you tried to find it |
+
 **Benefits**:
 - Exception usage reads naturally: `throw CouldNotRegister::becauseEmailIsAlreadyInUse($email)`
-- Groups related failures under one class (all registration failures in `CouldNotRegister`)
+- Groups related failures under one class
 - Factory methods are self-documenting
 
 ### ID Generation Strategy
