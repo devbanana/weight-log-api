@@ -21,12 +21,6 @@ final readonly class MongoUserReadModel implements UserReadModelInterface
     ) {
     }
 
-    #[\Override]
-    public function existsWithEmail(Email $email): bool
-    {
-        return $this->collection->countDocuments(['email' => $email->asString()]) > 0;
-    }
-
     /**
      * @return non-empty-string|null
      */

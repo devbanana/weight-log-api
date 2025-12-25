@@ -37,12 +37,6 @@ final class InMemoryUserReadModel implements UserReadModelInterface
     }
 
     #[\Override]
-    public function existsWithEmail(Email $email): bool
-    {
-        return isset($this->emailToUserId[$email->asString()]);
-    }
-
-    #[\Override]
     public function findUserIdByEmail(Email $email): ?string
     {
         return $this->emailToUserId[$email->asString()] ?? null;

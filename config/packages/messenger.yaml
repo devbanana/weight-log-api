@@ -20,8 +20,15 @@ framework:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
             # async: '%env(MESSENGER_TRANSPORT_DSN)%'
             # failed: 'doctrine://default?queue_name=failed'
-            sync: 'sync://'
+            events: 'sync://'
 
         routing:
             # Route your messages to the transports
-            # 'App\Message\YourMessage': async
+            'App\Domain\Common\Event\DomainEventInterface': events
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                # In-memory transport for testing event dispatching
+                events: 'in-memory://'

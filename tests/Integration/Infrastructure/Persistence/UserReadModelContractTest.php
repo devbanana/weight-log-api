@@ -32,15 +32,7 @@ final class UserReadModelContractTest extends TestCase
 {
     use MongoHelper;
 
-    #[DataProvider('readModelProvider')]
-    public function testItReturnsFalseForNonExistentEmail(UserReadModelInterface $readModel): void
-    {
-        $email = Email::fromString('nonexistent@example.com');
-
-        self::assertFalse($readModel->existsWithEmail($email));
-    }
-
-    #[DataProvider('readModelProvider')]
+    #[DataProvider('provideItReturnsNullForNonExistentEmailWhenFindingUserIdCases')]
     public function testItReturnsNullForNonExistentEmailWhenFindingUserId(UserReadModelInterface $readModel): void
     {
         $email = Email::fromString('nonexistent@example.com');
@@ -53,7 +45,7 @@ final class UserReadModelContractTest extends TestCase
      *
      * @return iterable<string, array{UserReadModelInterface}>
      */
-    public static function readModelProvider(): iterable
+    public static function provideItReturnsNullForNonExistentEmailWhenFindingUserIdCases(): iterable
     {
         yield 'InMemory' => [new InMemoryUserReadModel()];
 
@@ -61,38 +53,6 @@ final class UserReadModelContractTest extends TestCase
         $mongoCollection->drop();
 
         yield 'MongoDB' => [new MongoUserReadModel($mongoCollection)];
-    }
-
-    /**
-     * @param callable(string): void $seeder
-     */
-    #[DataProvider('readModelWithSeederProvider')]
-    public function testItReturnsTrueForExistingEmail(
-        UserReadModelInterface $readModel,
-        callable $seeder,
-    ): void {
-        $email = Email::fromString('exists@example.com');
-
-        // Seed the read model with a registered user
-        $seeder('exists@example.com');
-
-        self::assertTrue($readModel->existsWithEmail($email));
-    }
-
-    /**
-     * @param callable(string): void $seeder
-     */
-    #[DataProvider('readModelWithSeederProvider')]
-    public function testExistsWithEmailWorksWithMultipleUsers(
-        UserReadModelInterface $readModel,
-        callable $seeder,
-    ): void {
-        $seeder('user1@example.com');
-        $seeder('user2@example.com');
-
-        self::assertTrue($readModel->existsWithEmail(Email::fromString('user1@example.com')));
-        self::assertTrue($readModel->existsWithEmail(Email::fromString('user2@example.com')));
-        self::assertFalse($readModel->existsWithEmail(Email::fromString('user3@example.com')));
     }
 
     /**

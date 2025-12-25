@@ -6,6 +6,7 @@ namespace Tools\PHPStan;
 
 use ApiPlatform\State\ProcessorInterface;
 use App\Application\MessageBus\CommandBusInterface;
+use App\Domain\User\Service\CheckEmail;
 use ShipMonk\PHPStan\DeadCode\Provider\ReflectionBasedMemberUsageProvider;
 use ShipMonk\PHPStan\DeadCode\Provider\VirtualUsageData;
 
@@ -23,6 +24,7 @@ final class InfrastructureServiceUsageProvider extends ReflectionBasedMemberUsag
     private const array DI_MANAGED_INTERFACES = [
         ProcessorInterface::class,
         CommandBusInterface::class,
+        CheckEmail::class,
     ];
 
     #[\Override]

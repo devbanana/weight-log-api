@@ -27,9 +27,11 @@ final class TestContainer
     {
         $this->clock = new MockClock('2025-12-12 12:00:00 UTC');
         $passwordHasher = new FakePasswordHasher();
+        $checkEmail = new InMemoryCheckEmail();
         $userReadModel = new InMemoryUserReadModel();
 
         $this->eventStore = new InMemoryEventStore();
+        $this->eventStore->addListener($checkEmail->handleEvent(...));
         $this->eventStore->addListener($userReadModel->handleEvent(...));
 
         $this->commandBus = new InMemoryCommandBus();
@@ -37,7 +39,7 @@ final class TestContainer
             RegisterUserCommand::class,
             new RegisterUserHandler(
                 $this->eventStore,
-                $userReadModel,
+                $checkEmail,
                 $this->clock,
                 $passwordHasher,
             ),

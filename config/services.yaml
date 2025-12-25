@@ -64,6 +64,14 @@ services:
             $inner: '@App\Infrastructure\Persistence\MongoDB\MongoEventStore'
             $eventBus: '@event.bus'
 
+    # Domain Services
+    App\Infrastructure\Persistence\MongoDB\MongoCheckEmail:
+        arguments:
+            $collection: '@mongodb.collection.users'
+
+    App\Domain\User\Service\CheckEmail:
+        alias: App\Infrastructure\Persistence\MongoDB\MongoCheckEmail
+
     # Read Models
     App\Infrastructure\Persistence\MongoDB\MongoUserReadModel:
         arguments:

@@ -15,13 +15,6 @@ use App\Domain\User\ValueObject\Email;
 interface UserReadModelInterface
 {
     /**
-     * Check if a user exists with the given email.
-     *
-     * Used for uniqueness validation during registration.
-     */
-    public function existsWithEmail(Email $email): bool;
-
-    /**
      * Find user ID by email.
      *
      * Used for looking up user during login.

@@ -6,68 +6,59 @@ namespace App\Tests\Integration\Infrastructure;
 
 use App\Domain\Common\EventStore\EventStoreInterface;
 use App\Domain\Common\Exception\ConcurrencyException;
+use App\Domain\User\Event\UserLoggedIn;
 use App\Domain\User\Event\UserRegistered;
 use App\Domain\User\User;
-use App\Domain\User\UserReadModelInterface;
-use App\Domain\User\ValueObject\Email;
 use App\Infrastructure\Persistence\EventStore\DispatchingEventStore;
 use App\Infrastructure\Persistence\MongoDB\MongoEventStore;
-use App\Infrastructure\Persistence\MongoDB\MongoUserReadModel;
-use App\Infrastructure\Projection\UserProjection;
-use MongoDB\Collection;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 
 /**
- * Integration test that verifies the complete event dispatching flow.
+ * Integration test that verifies the DispatchingEventStore dispatches events to the message bus.
  *
- * Tests the full pipeline:
- * EventStore.append() → DispatchingEventStore → MessageBus → UserProjection → MongoUserReadModel
- *
- * This test validates that when events are appended to the event store,
- * they are automatically dispatched via Symfony Messenger and handled by
- * projections that update the read model.
+ * Uses Symfony Messenger's in-memory transport to capture dispatched events
+ * without depending on projections or read models.
  *
  * @internal
  */
 #[CoversClass(DispatchingEventStore::class)]
-#[UsesClass(Email::class)]
 #[UsesClass(MongoEventStore::class)]
-#[UsesClass(MongoUserReadModel::class)]
-#[UsesClass(UserProjection::class)]
 final class EventDispatchIntegrationTest extends KernelTestCase
 {
     use MongoHelper;
 
     private EventStoreInterface $eventStore;
-    private UserReadModelInterface $userReadModel;
-    private Collection $usersCollection;
+    private InMemoryTransport $eventTransport;
 
     #[\Override]
     protected function setUp(): void
     {
         self::bootKernel();
 
-        // Get services from container
         $container = self::getContainer();
         $this->eventStore = $container->get(EventStoreInterface::class);
-        $this->userReadModel = $container->get(UserReadModelInterface::class);
 
-        // Clean up MongoDB collections before each test
-        $database = self::getMongoDatabase();
-        $database->selectCollection('events')->drop();
-        $this->usersCollection = $database->selectCollection('users');
-        $this->usersCollection->drop();
+        $transport = $container->get('messenger.transport.events');
+        self::assertInstanceOf(InMemoryTransport::class, $transport);
+        $this->eventTransport = $transport;
+
+        // Clean up MongoDB events collection
+        self::getMongoDatabase()->selectCollection('events')->drop();
+
+        // Reset the in-memory transport
+        $this->eventTransport->reset();
     }
 
-    public function testItDispatchesEventAndUpdatesReadModelWhenAppendingToEventStore(): void
+    public function testItDispatchesEventToMessageBusWhenAppendingToEventStore(): void
     {
         $userId = 'user-dispatch-test-1';
         $email = 'integration@example.com';
         $occurredAt = new \DateTimeImmutable('2025-01-20T15:45:00+00:00');
 
-        // Create and append event to event store
         $event = new UserRegistered(
             id: $userId,
             email: $email,
@@ -82,29 +73,25 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         // Verify event was persisted to event store
         $storedEvents = $this->eventStore->getEvents($userId, User::class);
         self::assertCount(1, $storedEvents);
-        self::assertInstanceOf(UserRegistered::class, $storedEvents[0]);
-        self::assertSame($email, $storedEvents[0]->email);
 
-        // Verify read model was updated via projection
-        // The DispatchingEventStore should have dispatched the event to Messenger,
-        // which should have triggered UserProjection, which should have updated MongoUserReadModel
-        self::assertTrue(
-            $this->userReadModel->existsWithEmail(Email::fromString($email)),
-            'Read model should be updated after event is appended to event store',
-        );
+        // Verify event was dispatched to the message bus
+        $dispatchedEnvelopes = $this->eventTransport->getSent();
+        self::assertCount(1, $dispatchedEnvelopes);
+
+        $dispatchedEvent = $dispatchedEnvelopes[0]->getMessage();
+        self::assertInstanceOf(UserRegistered::class, $dispatchedEvent);
+        self::assertSame($email, $dispatchedEvent->email);
+        self::assertSame($userId, $dispatchedEvent->id);
     }
 
-    public function testItUpdatesReadModelForMultipleEvents(): void
+    public function testItDispatchesMultipleEventsFromSeparateAppends(): void
     {
         $userId1 = 'user-dispatch-test-2';
         $userId2 = 'user-dispatch-test-3';
-        $email1 = 'first@example.com';
-        $email2 = 'second@example.com';
 
-        // Append first user event
         $event1 = new UserRegistered(
             id: $userId1,
-            email: $email1,
+            email: 'first@example.com',
             dateOfBirth: '1990-05-15',
             displayName: 'First User',
             hashedPassword: 'hashed_password',
@@ -112,10 +99,9 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         );
         $this->eventStore->append($userId1, User::class, [$event1], expectedVersion: 0);
 
-        // Append second user event
         $event2 = new UserRegistered(
             id: $userId2,
-            email: $email2,
+            email: 'second@example.com',
             dateOfBirth: '1990-05-15',
             displayName: 'Second User',
             hashedPassword: 'hashed_password',
@@ -123,89 +109,58 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         );
         $this->eventStore->append($userId2, User::class, [$event2], expectedVersion: 0);
 
-        // Verify both users exist in read model
-        self::assertTrue($this->userReadModel->existsWithEmail(Email::fromString($email1)));
-        self::assertTrue($this->userReadModel->existsWithEmail(Email::fromString($email2)));
+        // Verify both events were dispatched
+        $dispatchedEnvelopes = $this->eventTransport->getSent();
+        self::assertCount(2, $dispatchedEnvelopes);
+
+        $dispatchedEmails = array_map(
+            static function (Envelope $envelope): string {
+                $message = $envelope->getMessage();
+                self::assertInstanceOf(UserRegistered::class, $message);
+
+                return $message->email;
+            },
+            $dispatchedEnvelopes,
+        );
+        self::assertContains('first@example.com', $dispatchedEmails);
+        self::assertContains('second@example.com', $dispatchedEmails);
     }
 
-    public function testItHandlesMultipleEventsInSingleAppend(): void
+    public function testItDispatchesAllEventsFromSingleAppend(): void
     {
         $userId = 'user-dispatch-test-4';
-        $initialEmail = 'initial@example.com';
         $occurredAt = new \DateTimeImmutable('2025-01-20T16:00:00+00:00');
 
-        // Create multiple events for the same aggregate
-        // (In real scenario, this might be registration + email verification)
         $event1 = new UserRegistered(
             id: $userId,
-            email: $initialEmail,
+            email: 'multi@example.com',
             dateOfBirth: '1990-05-15',
             displayName: 'Test User',
             hashedPassword: 'hashed_password',
             occurredAt: $occurredAt,
         );
 
-        // For this test, we'll use a second UserRegistered event to simulate
-        // multiple events being appended at once (even though in production
-        // you wouldn't register the same user twice)
-        $event2 = new UserRegistered(
+        $event2 = new UserLoggedIn(
             id: $userId,
-            email: $initialEmail,
-            dateOfBirth: '1990-05-15',
-            displayName: 'Test User',
-            hashedPassword: 'hashed_password',
             occurredAt: $occurredAt->modify('+1 second'),
         );
 
         // Append both events at once
         $this->eventStore->append($userId, User::class, [$event1, $event2], expectedVersion: 0);
 
-        // Verify both events were persisted
-        $storedEvents = $this->eventStore->getEvents($userId, User::class);
-        self::assertCount(2, $storedEvents);
-
-        // Verify read model was updated (projection is idempotent, so duplicate is fine)
-        self::assertTrue($this->userReadModel->existsWithEmail(Email::fromString($initialEmail)));
+        // Verify both events were dispatched
+        $dispatchedEnvelopes = $this->eventTransport->getSent();
+        self::assertCount(2, $dispatchedEnvelopes);
     }
 
-    public function testItMaintainsReadModelDataIntegrity(): void
+    public function testItDoesNotDispatchEventsWhenPersistenceFails(): void
     {
         $userId = 'user-dispatch-test-5';
-        $email = 'integrity@example.com';
-        $registeredAt = new \DateTimeImmutable('2025-01-20T17:30:00+00:00');
-
-        $event = new UserRegistered(
-            id: $userId,
-            email: $email,
-            dateOfBirth: '1990-05-15',
-            displayName: 'Integrity User',
-            hashedPassword: 'hashed_password',
-            occurredAt: $registeredAt,
-        );
-
-        $this->eventStore->append($userId, User::class, [$event], expectedVersion: 0);
-
-        // Verify the document structure in the read model
-        $document = $this->usersCollection->findOne(['_id' => $userId]);
-        self::assertNotNull($document, 'User document should exist in read model collection');
-        assert($document instanceof \ArrayAccess);
-        self::assertSame($email, $document['email']);
-        self::assertArrayHasKey('registered_at', (array) $document);
-
-        // Verify read model query works correctly
-        self::assertTrue($this->userReadModel->existsWithEmail(Email::fromString($email)));
-        self::assertFalse($this->userReadModel->existsWithEmail(Email::fromString('nonexistent@example.com')));
-    }
-
-    public function testItDoesNotUpdateReadModelWhenEventStoreThrowsException(): void
-    {
-        $userId = 'user-dispatch-test-6';
-        $email = 'concurrency@example.com';
 
         // First append - should succeed
         $event1 = new UserRegistered(
             id: $userId,
-            email: $email,
+            email: 'concurrency@example.com',
             dateOfBirth: '1990-05-15',
             displayName: 'Concurrency User',
             hashedPassword: 'hashed_password',
@@ -213,29 +168,24 @@ final class EventDispatchIntegrationTest extends KernelTestCase
         );
         $this->eventStore->append($userId, User::class, [$event1], expectedVersion: 0);
 
-        // Verify initial state
-        self::assertTrue($this->userReadModel->existsWithEmail(Email::fromString($email)));
+        // Reset transport to only capture subsequent dispatches
+        $this->eventTransport->reset();
 
-        // Try to append with wrong version - should throw ConcurrencyException
-        $event2 = new UserRegistered(
+        // Try to append login event with wrong version - should throw ConcurrencyException
+        $loginEvent = new UserLoggedIn(
             id: $userId,
-            email: 'updated@example.com',
-            dateOfBirth: '1990-05-15',
-            displayName: 'Concurrency User',
-            hashedPassword: 'hashed_password',
             occurredAt: new \DateTimeImmutable(),
         );
 
         try {
             // This should throw because we're using version 0 when version is actually 1
-            $this->eventStore->append($userId, User::class, [$event2], expectedVersion: 0);
+            $this->eventStore->append($userId, User::class, [$loginEvent], expectedVersion: 0);
             self::fail('Expected ConcurrencyException to be thrown');
-        } catch (\Exception $e) {
-            // Expected - exception should be thrown
+        } catch (ConcurrencyException) {
+            // Expected - concurrency violation due to wrong version
         }
 
-        // Read model should still have original email, not updated email
-        self::assertTrue($this->userReadModel->existsWithEmail(Email::fromString($email)));
-        self::assertFalse($this->userReadModel->existsWithEmail(Email::fromString('updated@example.com')));
+        // No events should have been dispatched after the failed append
+        self::assertCount(0, $this->eventTransport->getSent());
     }
 }
