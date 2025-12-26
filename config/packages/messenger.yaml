@@ -27,8 +27,12 @@ framework:
             'App\Domain\Common\Event\DomainEventInterface': events
 
 when@test:
+    parameters:
+        messenger_events_transport_default: 'sync://'
+
     framework:
         messenger:
             transports:
-                # In-memory transport for testing event dispatching
-                events: 'in-memory://'
+                # Default to sync:// so events are processed (E2E tests need this).
+                # EventDispatchIntegrationTest overrides to in-memory:// to inspect dispatched events.
+                events: '%env(default:messenger_events_transport_default:MESSENGER_EVENTS_TRANSPORT)%'

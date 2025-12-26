@@ -6,6 +6,7 @@ namespace Tools\PHPStan;
 
 use ApiPlatform\State\ProcessorInterface;
 use App\Application\MessageBus\CommandBusInterface;
+use App\Application\User\Query\FindUserAuthData;
 use App\Domain\User\Service\CheckEmail;
 use ShipMonk\PHPStan\DeadCode\Provider\ReflectionBasedMemberUsageProvider;
 use ShipMonk\PHPStan\DeadCode\Provider\VirtualUsageData;
@@ -25,6 +26,7 @@ final class InfrastructureServiceUsageProvider extends ReflectionBasedMemberUsag
         ProcessorInterface::class,
         CommandBusInterface::class,
         CheckEmail::class,
+        FindUserAuthData::class,
     ];
 
     #[\Override]

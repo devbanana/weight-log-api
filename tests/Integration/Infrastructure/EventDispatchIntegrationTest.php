@@ -37,6 +37,9 @@ final class EventDispatchIntegrationTest extends KernelTestCase
     #[\Override]
     protected function setUp(): void
     {
+        // Use in-memory transport to capture dispatched events for assertions
+        $_ENV['MESSENGER_EVENTS_TRANSPORT'] = 'in-memory://';
+
         self::bootKernel();
 
         $container = self::getContainer();
