@@ -123,8 +123,8 @@ Examples: `Email`, `UserId`, `PlainPassword`, `HashedPassword`
 
 ### 4. Ports & Adapters (Hexagonal Architecture)
 
-- **Domain defines interfaces (ports)** - `EventStoreInterface`, `UserReadModelInterface`
-- **Infrastructure provides implementations (adapters)** - `MongoEventStore`, `MongoUserReadModel`
+- **Domain defines interfaces (ports)** - `EventStoreInterface`, `CheckEmail`
+- **Infrastructure provides implementations (adapters)** - `MongoEventStore`, `MongoCheckEmail`
 - **Domain never depends on Infrastructure** - only the reverse
 
 ### 5. Event Sourcing
@@ -239,11 +239,24 @@ Data should be private by default. Expose only what is necessary via readonly pr
 - **Application**: Depends on Domain only. Handlers are thin orchestration. DTOs use primitives (no domain objects).
 - **Infrastructure**: Implements Domain interfaces. Never leak framework types to inner layers.
 
-**Read Model Method Naming**:
+**Domain Services, Finders, and Read Models** (following Matthias Noback's terminology):
 
-- `getByX(...)`: Returns data or throws exception
-- `findByX(...)`: Returns data or null
-- `existsWithX(...)`: Returns boolean
+- **Domain Services** (`Domain/{Context}/Service/`): Business rule checks with natural language naming
+  - Interface defines the "question" being asked
+  - Example: `CheckEmail::isUnique(Email $email): bool`
+
+- **Finders** (`Application/{Context}/Query/`): Query interfaces that return read models
+  - Interface defines a lookup method
+  - Example: `FindUserAuthData::byEmail(Email $email): ?UserAuthData`
+
+- **Read Models** (`Application/{Context}/Query/`): Immutable data structures returned by finders
+  - Simple DTOs with public readonly properties
+  - Example: `UserAuthData` with `userId` and `roles`
+
+**Method Naming Conventions**:
+
+- `byX(...)`: Finder method - returns read model or null
+- `isX(...)` / `hasX(...)`: Domain service method - returns boolean for business rule checks
 
 ## Directory Structure
 
@@ -256,7 +269,7 @@ src/
 │   │   └── EventStore/     # EventStoreInterface (port)
 │   └── {Context}/          # e.g., User/, Order/
 │       ├── {Aggregate}.php
-│       ├── {ReadModel}Interface.php  # Port for queries
+│       ├── Service/        # Domain service interfaces (e.g., CheckEmail)
 │       ├── ValueObject/
 │       ├── Event/
 │       └── Exception/
@@ -266,7 +279,7 @@ src/
 │   ├── Security/           # PasswordHasherInterface (port)
 │   └── {Context}/
 │       ├── Command/        # Commands + Handlers
-│       └── Query/          # Queries + Handlers
+│       └── Query/          # Queries, Handlers, Finders, Read Models
 │
 └── Infrastructure/         # Layer 3: Adapters (depends on everything)
     ├── Api/                # API Platform resources + state processors
@@ -376,14 +389,17 @@ try {
 
 ### DDD-Style Exception Naming
 
-Domain exceptions follow a descriptive naming pattern that reads as a sentence:
+Domain exceptions follow descriptive naming patterns that read as sentences. The pattern differs between commands and queries:
 
-**Class naming**: `CouldNot[Action]` - describes what action failed
+#### Command Exceptions (business rule violations)
 
-**Factory method naming**: `because[Reason]()` - describes why it failed
+**Pattern**: `CouldNot[Action]::because[Reason]()`
+
+- Class name describes what action failed
+- Factory method describes **why** it failed
 
 ```php
-// ✅ CORRECT: Reads as "Could not register because email address is already in use"
+// ✅ CORRECT: Reads as "Could not register because email is already in use"
 final class CouldNotRegister extends \DomainException
 {
     public static function becauseEmailIsAlreadyInUse(Email $email): self
@@ -413,9 +429,40 @@ final class UserAlreadyExistsException extends \DomainException
 }
 ```
 
+#### Query Exceptions (entity not found)
+
+**Pattern**: `CouldNotFind[Entity]::with[Identifier]()`
+
+- Class name describes what couldn't be found
+- Factory method describes **how** you tried to find it (the lookup key)
+
+```php
+// ✅ CORRECT: Reads as "Could not find user with ID xyz"
+final class CouldNotFindUser extends \DomainException
+{
+    public static function withId(UserId $id): self
+    {
+        return new self(sprintf('Could not find user with ID "%s".', $id->asString()));
+    }
+
+    // Multiple lookup methods are fine
+    public static function withEmail(Email $email): self
+    {
+        return new self(sprintf('Could not find user with email "%s".', $email->asString()));
+    }
+}
+```
+
+#### Summary
+
+| Type | Pattern | Method prefix | Explains |
+|------|---------|---------------|----------|
+| Command | `CouldNot[Action]` | `because` | Why the action failed |
+| Query | `CouldNotFind[Entity]` | `with` | How you tried to find it |
+
 **Benefits**:
 - Exception usage reads naturally: `throw CouldNotRegister::becauseEmailIsAlreadyInUse($email)`
-- Groups related failures under one class (all registration failures in `CouldNotRegister`)
+- Groups related failures under one class
 - Factory methods are self-documenting
 
 ### ID Generation Strategy
@@ -496,7 +543,8 @@ Contract tests verify that **all implementations of a port interface behave iden
 **Existing contract tests:**
 
 - `EventStoreContractTest` - Tests `InMemoryEventStore` and `MongoEventStore`
-- `UserReadModelContractTest` - Tests `InMemoryUserReadModel` and `MongoUserReadModel`
+- `CheckEmailContractTest` - Tests `InMemoryCheckEmail` and `MongoCheckEmail`
+- `FindUserAuthDataContractTest` - Tests `InMemoryFindUserAuthData` and `MongoFindUserAuthData`
 - `PasswordHasherContractTest` - Tests `FakePasswordHasher` and `NativePasswordHasher`
 
 **Implementation-specific tests:**
@@ -642,19 +690,27 @@ Following Noback's top-down approach from Section 14.7, with **tests written BEF
 
 **Key principle**: Write failing tests for one method, implement them with minimal code until they pass, get feedback. Never batch multiple methods.
 
-### Adding Methods to Port Interfaces
+### Adding New Domain Services or Finders
 
-When a feature requires adding a new method to a port interface (e.g., `UserReadModelInterface`):
+When a feature requires a new domain service or finder:
 
-1. **Add the method to the interface** (Domain layer)
-2. **Implement ONLY in the in-memory test double** (e.g., `InMemoryUserReadModel`)
-3. **Verify UseCase tests pass** → `composer test:usecase`
-4. **STOP HERE** if only working on UseCase layer
+**For Domain Services** (business rule checks like `CheckEmail::isUnique()`):
 
-Only after UseCase tests are GREEN, move to Infrastructure:
+1. **Create interface in Domain layer** (`Domain/{Context}/Service/`)
+2. **Implement in-memory test double** (`tests/UseCase/`)
+3. **Wire into TestContainer** and verify UseCase tests pass
+4. **Create contract tests** for both implementations
+5. **Implement infrastructure adapter** (`Infrastructure/Persistence/MongoDB/`)
+6. **Verify contract tests pass** → All implementations behave identically
 
-5. **Add contract tests** for the new method
-6. **Implement in real adapter** (e.g., `MongoUserReadModel`)
+**For Finders** (query interfaces like `FindUserAuthData::byEmail()`):
+
+1. **Create interface in Application layer** (`Application/{Context}/Query/`)
+2. **Create read model DTO** in same directory (e.g., `UserAuthData`)
+3. **Implement in-memory test double** (`tests/UseCase/`)
+4. **Wire into TestContainer** and verify UseCase tests pass
+5. **Create contract tests** for both implementations
+6. **Implement infrastructure adapter** (`Infrastructure/Persistence/MongoDB/`)
 7. **Verify contract tests pass** → All implementations behave identically
 
 This ensures you don't prematurely implement infrastructure code before the application layer is working.

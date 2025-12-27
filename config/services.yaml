@@ -64,13 +64,21 @@ services:
             $inner: '@App\Infrastructure\Persistence\MongoDB\MongoEventStore'
             $eventBus: '@event.bus'
 
-    # Read Models
-    App\Infrastructure\Persistence\MongoDB\MongoUserReadModel:
+    # Domain Services
+    App\Infrastructure\Persistence\MongoDB\MongoCheckEmail:
         arguments:
             $collection: '@mongodb.collection.users'
 
-    App\Domain\User\UserReadModelInterface:
-        alias: App\Infrastructure\Persistence\MongoDB\MongoUserReadModel
+    App\Domain\User\Service\CheckEmail:
+        alias: App\Infrastructure\Persistence\MongoDB\MongoCheckEmail
+
+    # Finders (read model queries)
+    App\Infrastructure\Persistence\MongoDB\MongoFindUserAuthData:
+        arguments:
+            $collection: '@mongodb.collection.users'
+
+    App\Application\User\Query\FindUserAuthData:
+        alias: App\Infrastructure\Persistence\MongoDB\MongoFindUserAuthData
 
     # Projections
     App\Infrastructure\Projection\UserProjection:
@@ -135,10 +143,6 @@ when@test:
             arguments:
                 $inner: '@App\Infrastructure\Persistence\MongoDB\MongoEventStore'
                 $eventBus: '@event.bus'
-
-        App\Domain\User\UserReadModelInterface:
-            alias: App\Infrastructure\Persistence\MongoDB\MongoUserReadModel
-            public: true
 
         App\Application\MessageBus\CommandBusInterface:
             alias: App\Infrastructure\MessageBus\MessengerCommandBus

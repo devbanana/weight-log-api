@@ -7,8 +7,8 @@ namespace App\Application\User\Command;
 use App\Application\Security\PasswordHasherInterface;
 use App\Domain\Common\EventStore\EventStoreInterface;
 use App\Domain\User\Exception\CouldNotRegister;
+use App\Domain\User\Service\CheckEmail;
 use App\Domain\User\User;
-use App\Domain\User\UserReadModelInterface;
 use App\Domain\User\ValueObject\DateOfBirth;
 use App\Domain\User\ValueObject\DisplayName;
 use App\Domain\User\ValueObject\Email;
@@ -25,7 +25,7 @@ final readonly class RegisterUserHandler
 {
     public function __construct(
         private EventStoreInterface $eventStore,
-        private UserReadModelInterface $userReadModel,
+        private CheckEmail $checkEmail,
         private ClockInterface $clock,
         private PasswordHasherInterface $passwordHasher,
     ) {
@@ -35,7 +35,7 @@ final readonly class RegisterUserHandler
     {
         $email = Email::fromString($command->email);
 
-        if ($this->userReadModel->existsWithEmail($email)) {
+        if (!$this->checkEmail->isUnique($email)) {
             throw CouldNotRegister::becauseEmailIsAlreadyInUse($email);
         }
 

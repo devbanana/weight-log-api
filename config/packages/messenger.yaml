@@ -20,8 +20,19 @@ framework:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
             # async: '%env(MESSENGER_TRANSPORT_DSN)%'
             # failed: 'doctrine://default?queue_name=failed'
-            sync: 'sync://'
+            events: 'sync://'
 
         routing:
             # Route your messages to the transports
-            # 'App\Message\YourMessage': async
+            'App\Domain\Common\Event\DomainEventInterface': events
+
+when@test:
+    parameters:
+        messenger_events_transport_default: 'sync://'
+
+    framework:
+        messenger:
+            transports:
+                # Default to sync:// so events are processed (E2E tests need this).
+                # EventDispatchIntegrationTest overrides to in-memory:// to inspect dispatched events.
+                events: '%env(default:messenger_events_transport_default:MESSENGER_EVENTS_TRANSPORT)%'

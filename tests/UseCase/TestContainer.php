@@ -27,17 +27,19 @@ final class TestContainer
     {
         $this->clock = new MockClock('2025-12-12 12:00:00 UTC');
         $passwordHasher = new FakePasswordHasher();
-        $userReadModel = new InMemoryUserReadModel();
+        $checkEmail = new InMemoryCheckEmail();
+        $findUserAuthData = new InMemoryFindUserAuthData();
 
         $this->eventStore = new InMemoryEventStore();
-        $this->eventStore->addListener($userReadModel->handleEvent(...));
+        $this->eventStore->addListener($checkEmail->handleEvent(...));
+        $this->eventStore->addListener($findUserAuthData->handleEvent(...));
 
         $this->commandBus = new InMemoryCommandBus();
         $this->commandBus->register(
             RegisterUserCommand::class,
             new RegisterUserHandler(
                 $this->eventStore,
-                $userReadModel,
+                $checkEmail,
                 $this->clock,
                 $passwordHasher,
             ),
@@ -53,7 +55,7 @@ final class TestContainer
         $this->queryBus = new InMemoryQueryBus();
         $this->queryBus->register(
             FindUserAuthDataByEmailQuery::class,
-            new FindUserAuthDataByEmailHandler($userReadModel),
+            new FindUserAuthDataByEmailHandler($findUserAuthData),
         );
     }
 }
