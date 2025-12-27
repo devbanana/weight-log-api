@@ -27,32 +27,23 @@ use PHPUnit\Framework\TestCase;
  * @internal
  */
 #[CoversClass(MongoFindUserAuthData::class)]
-#[CoversClass(UserAuthData::class)]
 #[UsesClass(Email::class)]
 #[UsesClass(UserProjection::class)]
 final class FindUserAuthDataContractTest extends TestCase
 {
     use MongoHelper;
 
-    #[DataProvider('provideItReturnsNullForNonExistentEmailCases')]
-    public function testItReturnsNullForNonExistentEmail(FindUserAuthData $finder): void
-    {
-        $email = Email::fromString('nonexistent@example.com');
-
-        self::assertNull($finder->byEmail($email));
-    }
-
     /**
-     * @return iterable<string, array{FindUserAuthData}>
+     * @param callable(string): void $seeder
      */
-    public static function provideItReturnsNullForNonExistentEmailCases(): iterable
-    {
-        yield 'InMemory' => [new InMemoryFindUserAuthData()];
+    #[DataProvider('finderWithSeederProvider')]
+    public function testItReturnsNullForNonExistentEmail(
+        FindUserAuthData $finder,
+        callable $seeder,
+    ): void {
+        $seeder('existing@example.com');
 
-        $mongoCollection = self::getMongoDatabase()->selectCollection('users');
-        $mongoCollection->drop();
-
-        yield 'MongoDB' => [new MongoFindUserAuthData($mongoCollection)];
+        self::assertNull($finder->byEmail(Email::fromString('nonexistent@example.com')));
     }
 
     /**
