@@ -208,14 +208,29 @@ final class UserContext implements Context
         $this->kernel->boot();
     }
 
+    #[Given('I am not authenticated')]
+    public function iAmNotAuthenticated(): void
+    {
+        $this->authToken = null;
+    }
+
+    #[Given('my account was deleted')]
+    public function myAccountWasDeleted(): void
+    {
+        // Delete all user data from MongoDB while keeping the JWT token
+        $this->database->selectCollection('event_store')->deleteMany([]);
+        $this->database->selectCollection('users')->deleteMany([]);
+    }
+
     #[When('I request my user info')]
     public function iRequestMyUserInfo(): void
     {
-        assert($this->authToken !== null, 'Must be logged in to request user info');
+        $headers = [];
+        if ($this->authToken !== null) {
+            $headers['Authorization'] = 'Bearer ' . $this->authToken;
+        }
 
-        $this->response = $this->makeGetRequest('/api/me', [
-            'Authorization' => 'Bearer ' . $this->authToken,
-        ]);
+        $this->response = $this->makeGetRequest('/api/me', $headers);
 
         if ($this->response->getStatusCode() === 200) {
             $content = self::getResponseContent($this->response);
@@ -223,12 +238,6 @@ final class UserContext implements Context
             assert(is_array($data));
             $this->userInfo = $data;
         }
-    }
-
-    #[When('I request my user info without authentication')]
-    public function iRequestMyUserInfoWithoutAuthentication(): void
-    {
-        $this->response = $this->makeGetRequest('/api/me');
     }
 
     #[Then('I should receive my user info with:')]
@@ -271,6 +280,12 @@ final class UserContext implements Context
     public function iShouldReceiveA401UnauthorizedError(): void
     {
         self::assertResponseStatusCode($this->response, 401, 'Unauthorized');
+    }
+
+    #[Then('I should receive a 404 Not Found error')]
+    public function iShouldReceiveA404NotFoundError(): void
+    {
+        self::assertResponseStatusCode($this->response, 404, 'Not Found');
     }
 
     private function registerWithData(string $email, string $dateOfBirth, string $displayName, string $password): void

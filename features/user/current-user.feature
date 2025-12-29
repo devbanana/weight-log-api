@@ -30,5 +30,13 @@ Feature: Current User Info
 
   @e2e
   Scenario: Cannot access user info without authentication
-    When I request my user info without authentication
+    Given I am not authenticated
+    When I request my user info
     Then I should receive a 401 Unauthorized error
+
+  @e2e
+  Scenario: Cannot access user info after account deletion
+    Given I am logged in as "alice@example.com" with password "SecurePass123!"
+    And my account was deleted
+    When I request my user info
+    Then I should receive a 404 Not Found error
