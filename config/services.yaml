@@ -33,6 +33,10 @@ services:
         tags:
             - { name: messenger.message_handler, bus: query.bus }
 
+    App\Application\User\Query\GetUserInfoHandler:
+        tags:
+            - { name: messenger.message_handler, bus: query.bus }
+
     # MongoDB Client
     MongoDB\Client:
         arguments:
@@ -79,6 +83,13 @@ services:
 
     App\Application\User\Query\FindUserAuthData:
         alias: App\Infrastructure\Persistence\MongoDB\MongoFindUserAuthData
+
+    App\Infrastructure\Persistence\MongoDB\MongoGetUserInfo:
+        arguments:
+            $collection: '@mongodb.collection.users'
+
+    App\Application\User\Query\GetUserInfo:
+        alias: App\Infrastructure\Persistence\MongoDB\MongoGetUserInfo
 
     # Projections
     App\Infrastructure\Projection\UserProjection:

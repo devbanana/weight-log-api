@@ -15,6 +15,7 @@ use MongoDB\Database;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Webmozart\Assert\Assert;
 
 /**
  * End-to-end context tests the full application stack with real HTTP requests.
@@ -28,6 +29,12 @@ final class UserContext implements Context
 
     private ?Response $response = null;
     private Database $database;
+    private ?string $authToken = null;
+
+    /**
+     * @var array<mixed, mixed>|null
+     */
+    private ?array $userInfo = null;
 
     public function __construct(
         private readonly KernelInterface $kernel,
@@ -162,6 +169,123 @@ final class UserContext implements Context
     public function loginShouldFailDueToValidationError(): void
     {
         self::assertResponseStatusCode($this->response, 422, 'Unprocessable Entity');
+    }
+
+    #[Given('a user registered with:')]
+    public function aUserRegisteredWith(TableNode $table): void
+    {
+        $data = $table->getRowsHash();
+        $email = $data['email'];
+        $dateOfBirth = $data['dateOfBirth'];
+        $displayName = $data['displayName'];
+        $password = $data['password'];
+        assert(is_string($email) && is_string($dateOfBirth) && is_string($displayName) && is_string($password));
+
+        $this->registerWithData($email, $dateOfBirth, $displayName, $password);
+        self::assertResponseStatusCode($this->response, 201, 'Created (test setup)');
+
+        // Shutdown kernel to ensure services are fresh for next request
+        $this->kernel->shutdown();
+        $this->kernel->boot();
+
+        $this->response = null;
+    }
+
+    #[Given('I am logged in as :email with password :password')]
+    public function iAmLoggedInAsWithPassword(string $email, string $password): void
+    {
+        $this->iLogInWithEmailAndPassword($email, $password);
+        self::assertResponseStatusCode($this->response, 200, 'OK');
+
+        $content = self::getResponseContent($this->response);
+        $data = json_decode($content, true, flags: JSON_THROW_ON_ERROR);
+        assert(is_array($data) && isset($data['access_token']) && is_string($data['access_token']));
+
+        $this->authToken = $data['access_token'];
+
+        // Shutdown kernel to ensure services are fresh for next request
+        $this->kernel->shutdown();
+        $this->kernel->boot();
+    }
+
+    #[Given('I am not authenticated')]
+    public function iAmNotAuthenticated(): void
+    {
+        $this->authToken = null;
+    }
+
+    #[Given('my account was deleted')]
+    public function myAccountWasDeleted(): void
+    {
+        // Delete all user data from MongoDB while keeping the JWT token
+        $this->database->selectCollection('event_store')->deleteMany([]);
+        $this->database->selectCollection('users')->deleteMany([]);
+    }
+
+    #[When('I request my user info')]
+    public function iRequestMyUserInfo(): void
+    {
+        $headers = [];
+        if ($this->authToken !== null) {
+            $headers['Authorization'] = 'Bearer ' . $this->authToken;
+        }
+
+        $this->response = $this->makeGetRequest('/api/me', $headers);
+
+        if ($this->response->getStatusCode() === 200) {
+            $content = self::getResponseContent($this->response);
+            $data = json_decode($content, true, flags: JSON_THROW_ON_ERROR);
+            assert(is_array($data));
+            $this->userInfo = $data;
+        }
+    }
+
+    #[Then('I should receive my user info with:')]
+    public function iShouldReceiveMyUserInfoWith(TableNode $table): void
+    {
+        self::assertResponseStatusCode($this->response, 200, 'OK');
+        assert($this->userInfo !== null, 'No user info received');
+
+        $expected = $table->getRowsHash();
+
+        if (isset($expected['email'])) {
+            Assert::same($this->userInfo['email'], $expected['email']);
+        }
+        if (isset($expected['displayName'])) {
+            Assert::same($this->userInfo['displayName'], $expected['displayName']);
+        }
+    }
+
+    #[Then('my user info should include a valid registration timestamp')]
+    public function myUserInfoShouldIncludeAValidRegistrationTimestamp(): void
+    {
+        assert($this->userInfo !== null, 'No user info received');
+        Assert::keyExists($this->userInfo, 'registeredAt');
+        Assert::string($this->userInfo['registeredAt']);
+
+        $registeredAt = \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $this->userInfo['registeredAt']);
+        Assert::isInstanceOf($registeredAt, \DateTimeImmutable::class, 'registeredAt should be a valid ISO 8601 date');
+    }
+
+    #[Then('my user info should include my user ID')]
+    public function myUserInfoShouldIncludeMyUserId(): void
+    {
+        assert($this->userInfo !== null, 'No user info received');
+        Assert::keyExists($this->userInfo, 'id');
+        Assert::string($this->userInfo['id']);
+        Assert::notEmpty($this->userInfo['id']);
+    }
+
+    #[Then('I should receive a 401 Unauthorized error')]
+    public function iShouldReceiveA401UnauthorizedError(): void
+    {
+        self::assertResponseStatusCode($this->response, 401, 'Unauthorized');
+    }
+
+    #[Then('I should receive a 404 Not Found error')]
+    public function iShouldReceiveA404NotFoundError(): void
+    {
+        self::assertResponseStatusCode($this->response, 404, 'Not Found');
     }
 
     private function registerWithData(string $email, string $dateOfBirth, string $displayName, string $password): void

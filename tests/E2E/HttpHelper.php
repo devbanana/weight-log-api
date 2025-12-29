@@ -33,6 +33,25 @@ trait HttpHelper
         return $this->kernel->handle($request);
     }
 
+    /**
+     * @param array<string, string> $headers
+     */
+    private function makeGetRequest(string $uri, array $headers = []): Response
+    {
+        $server = ['HTTP_ACCEPT' => 'application/json'];
+        foreach ($headers as $name => $value) {
+            $server['HTTP_' . mb_strtoupper(str_replace('-', '_', $name))] = $value;
+        }
+
+        $request = Request::create(
+            uri: $uri,
+            method: 'GET',
+            server: $server,
+        );
+
+        return $this->kernel->handle($request);
+    }
+
     private static function assertResponseStatusCode(?Response $response, int $expected, string $description): void
     {
         Assert::notNull($response, 'No response received');
