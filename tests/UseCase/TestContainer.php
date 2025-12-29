@@ -10,6 +10,8 @@ use App\Application\User\Command\RegisterUserCommand;
 use App\Application\User\Command\RegisterUserHandler;
 use App\Application\User\Query\FindUserAuthDataByEmailHandler;
 use App\Application\User\Query\FindUserAuthDataByEmailQuery;
+use App\Application\User\Query\GetUserInfoHandler;
+use App\Application\User\Query\GetUserInfoQuery;
 use Symfony\Component\Clock\MockClock;
 
 /**
@@ -29,10 +31,12 @@ final class TestContainer
         $passwordHasher = new FakePasswordHasher();
         $checkEmail = new InMemoryCheckEmail();
         $findUserAuthData = new InMemoryFindUserAuthData();
+        $getUserInfo = new InMemoryGetUserInfo();
 
         $this->eventStore = new InMemoryEventStore();
         $this->eventStore->addListener($checkEmail->handleEvent(...));
         $this->eventStore->addListener($findUserAuthData->handleEvent(...));
+        $this->eventStore->addListener($getUserInfo->handleEvent(...));
 
         $this->commandBus = new InMemoryCommandBus();
         $this->commandBus->register(
@@ -56,6 +60,10 @@ final class TestContainer
         $this->queryBus->register(
             FindUserAuthDataByEmailQuery::class,
             new FindUserAuthDataByEmailHandler($findUserAuthData),
+        );
+        $this->queryBus->register(
+            GetUserInfoQuery::class,
+            new GetUserInfoHandler($getUserInfo),
         );
     }
 }

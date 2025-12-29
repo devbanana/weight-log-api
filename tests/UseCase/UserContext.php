@@ -7,6 +7,8 @@ namespace App\Tests\UseCase;
 use App\Application\User\Command\LoginCommand;
 use App\Application\User\Command\RegisterUserCommand;
 use App\Application\User\Query\FindUserAuthDataByEmailQuery;
+use App\Application\User\Query\GetUserInfoQuery;
+use App\Application\User\Query\UserInfo;
 use App\Domain\User\Event\UserLoggedIn;
 use App\Domain\User\Exception\CouldNotAuthenticate;
 use App\Domain\User\Exception\CouldNotRegister;
@@ -32,6 +34,7 @@ final class UserContext implements Context
     private ?string $registeredUserId = null;
     private ?string $loggedInUserId = null;
     private ?\Throwable $caughtException = null;
+    private ?UserInfo $userInfo = null;
 
     public function __construct()
     {
@@ -207,6 +210,81 @@ final class UserContext implements Context
             \InvalidArgumentException::class,
             'Expected InvalidArgumentException to be thrown',
         );
+    }
+
+    #[Given('a user registered with:')]
+    public function aUserRegisteredWith(TableNode $table): void
+    {
+        $data = $table->getRowsHash();
+        $email = $data['email'];
+        $dateOfBirth = $data['dateOfBirth'];
+        $displayName = $data['displayName'];
+        $password = $data['password'];
+        assert(is_string($email) && is_string($dateOfBirth) && is_string($displayName) && is_string($password));
+
+        $this->registerWithData($email, $dateOfBirth, $displayName, $password);
+    }
+
+    #[Given('I am logged in as :email with password :password')]
+    public function iAmLoggedInAsWithPassword(string $email, string $password): void
+    {
+        $this->iLogInWithEmailAndPassword($email, $password);
+        Assert::null($this->caughtException, 'Login should not have thrown an exception');
+        Assert::notNull($this->loggedInUserId, 'Expected to be logged in');
+    }
+
+    #[When('I request my user info')]
+    public function iRequestMyUserInfo(): void
+    {
+        Assert::notNull($this->loggedInUserId, 'Must be logged in to request user info');
+        assert($this->loggedInUserId !== '');
+
+        try {
+            $this->userInfo = $this->container->queryBus->dispatch(
+                new GetUserInfoQuery($this->loggedInUserId),
+            );
+        } catch (\Throwable $e) {
+            $this->caughtException = $e;
+        }
+    }
+
+    #[Then('I should receive my user info with:')]
+    public function iShouldReceiveMyUserInfoWith(TableNode $table): void
+    {
+        Assert::null($this->caughtException, 'Getting user info should not have thrown an exception');
+        Assert::notNull($this->userInfo, 'No user info was received');
+
+        $expected = $table->getRowsHash();
+
+        if (isset($expected['email'])) {
+            Assert::same($this->userInfo->email, $expected['email'], 'Email mismatch');
+        }
+        if (isset($expected['displayName'])) {
+            Assert::same($this->userInfo->displayName, $expected['displayName'], 'Display name mismatch');
+        }
+    }
+
+    #[Then('my user info should include a valid registration timestamp')]
+    public function myUserInfoShouldIncludeAValidRegistrationTimestamp(): void
+    {
+        Assert::notNull($this->userInfo, 'No user info was received');
+        Assert::notEmpty($this->userInfo->registeredAt, 'Registration timestamp is empty');
+
+        // Verify it's a valid ISO 8601 date
+        $parsed = \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $this->userInfo->registeredAt);
+        Assert::isInstanceOf(
+            $parsed,
+            \DateTimeImmutable::class,
+            'Registration timestamp is not in valid ISO 8601 format',
+        );
+    }
+
+    #[Then('my user info should include my user ID')]
+    public function myUserInfoShouldIncludeMyUserId(): void
+    {
+        Assert::notNull($this->userInfo, 'No user info was received');
+        Assert::notNull($this->loggedInUserId, 'No logged in user ID');
+        Assert::same($this->userInfo->id, $this->loggedInUserId, 'User ID mismatch');
     }
 
     private function registerWithData(string $email, string $dateOfBirth, string $displayName, string $password): void
