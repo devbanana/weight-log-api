@@ -7,6 +7,8 @@ namespace App\Tests\Integration\Infrastructure\Api;
 use App\Application\MessageBus\QueryBusInterface;
 use App\Application\User\Query\GetUserInfoQuery;
 use App\Application\User\Query\UserInfo;
+use App\Domain\User\Exception\CouldNotFindUser;
+use App\Domain\User\ValueObject\UserId;
 use App\Infrastructure\Api\EventListener\TokenResponseHeadersListener;
 use App\Infrastructure\Api\Resource\CurrentUserResource;
 use App\Infrastructure\Api\State\GetCurrentUserInfoProvider;
@@ -32,6 +34,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 #[CoversClass(GetCurrentUserInfoProvider::class)]
 #[UsesClass(SecurityUser::class)]
 #[UsesClass(TokenResponseHeadersListener::class)]
+#[UsesClass(UserId::class)]
 final class GetCurrentUserInfoEndpointTest extends WebTestCase
 {
     use HttpHelper;
@@ -82,6 +85,21 @@ final class GetCurrentUserInfoEndpointTest extends WebTestCase
         self::assertSame('alice@example.com', $data['email']);
         self::assertSame('Alice', $data['displayName']);
         self::assertSame('2024-01-15T10:30:00+00:00', $data['registeredAt']);
+    }
+
+    public function testItReturns404WhenUserNoLongerExists(): void
+    {
+        $userId = '019412ab-cdef-7890-abcd-ef1234567890';
+
+        $this->queryBus
+            ->expects(self::once())
+            ->method('dispatch')
+            ->willThrowException(CouldNotFindUser::withId(UserId::fromString($userId)))
+        ;
+
+        $this->getJsonAsUser('/api/me', $userId);
+
+        self::assertResponseStatusCodeSame(404);
     }
 
     /**
